@@ -1,26 +1,247 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * XAALIS — système visuel
+ *
+ * Métaphore : le cahier. Xaalis remplace le registre papier des PME
+ * sénégalaises, donc l'interface en emprunte la structure — papier réglé,
+ * encre indigo, lignes qui portent les rangées.
+ *
+ * Règle de palette : Wave (cyan) et Orange Money (orange) sont des DONNÉES,
+ * pas du décor — ils viennent de l'enum PaymentMethod. Ils crient. Le décor
+ * doit donc rester sobre pour les laisser parler : la marque n'est ni cyan
+ * ni orange.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --papier: #eef1f7; /* fond : blanc froid de papier réglé */
+  --reglure: #ccd8ea; /* le bleu des lignes du cahier -> bordures */
+  --encre: #131720; /* texte */
+  --indigo: #2b3a8f; /* marque : teinture indigo, encre du registre */
+  --vert: #17835a; /* sous le budget, validé */
+  --ocre: #b45309; /* seuil d'alerte 80 % */
+  --brique: #b42318; /* dépassement, rejet */
+
+  /* Moyens de paiement — couleurs de données (enum PaymentMethod) */
+  --pm-especes: #17835a;
+  --pm-wave: #12b5e5;
+  --pm-orange-money: #ff7900;
+  --pm-virement: #64748b;
+  --pm-carte: #7c3aed;
+
+  /* Correspondance avec les jetons shadcn */
+  --background: var(--papier);
+  --foreground: var(--encre);
+  --card: #ffffff;
+  --card-foreground: var(--encre);
+  --popover: #ffffff;
+  --popover-foreground: var(--encre);
+  --primary: var(--indigo);
+  --primary-foreground: #ffffff;
+  --secondary: #dfe6f2;
+  --secondary-foreground: var(--indigo);
+  --muted: #e4eaf4;
+  --muted-foreground: #5a6782;
+  --accent: #dfe6f2;
+  --accent-foreground: var(--indigo);
+  --destructive: var(--brique);
+  --border: var(--reglure);
+  --input: var(--reglure);
+  --ring: var(--indigo);
+
+  /* Un registre est équerré : rayon serré, mais non nul. */
+  --radius: 0.25rem;
+
+  --chart-1: var(--indigo);
+  --chart-2: var(--pm-wave);
+  --chart-3: var(--vert);
+  --chart-4: var(--ocre);
+  --chart-5: var(--pm-carte);
+
+  --sidebar: var(--encre);
+  --sidebar-foreground: #c3cbdd;
+  --sidebar-primary: #ffffff;
+  --sidebar-primary-foreground: var(--encre);
+  --sidebar-accent: #232938;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #262d3d;
+  --sidebar-ring: var(--indigo);
+}
+
+.dark {
+  --papier: #0f1319;
+  --reglure: #2a3446;
+  --encre: #e8ecf4;
+
+  --background: var(--papier);
+  --foreground: var(--encre);
+  --card: #161b24;
+  --card-foreground: var(--encre);
+  --popover: #161b24;
+  --popover-foreground: var(--encre);
+  --primary: #8c9cf0;
+  --primary-foreground: #0f1319;
+  --secondary: #1e2634;
+  --secondary-foreground: #c8d2ee;
+  --muted: #1e2634;
+  --muted-foreground: #94a1bd;
+  --accent: #1e2634;
+  --accent-foreground: #c8d2ee;
+  --destructive: #f0574a;
+  --border: var(--reglure);
+  --input: #2a3446;
+  --ring: #8c9cf0;
+
+  --sidebar: #0b0e13;
+  --sidebar-foreground: #a9b4ca;
+  --sidebar-primary: #ffffff;
+  --sidebar-primary-foreground: #0b0e13;
+  --sidebar-accent: #1a212c;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #1f2632;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+
+  --font-sans: var(--font-archivo);
+  --font-mono: var(--font-plex-mono);
+  --font-heading: var(--font-archivo);
+
+  --color-papier: var(--papier);
+  --color-reglure: var(--reglure);
+  --color-encre: var(--encre);
+  --color-indigo: var(--indigo);
+  --color-vert: var(--vert);
+  --color-ocre: var(--ocre);
+  --color-brique: var(--brique);
+
+  --color-pm-especes: var(--pm-especes);
+  --color-pm-wave: var(--pm-wave);
+  --color-pm-orange-money: var(--pm-orange-money);
+  --color-pm-virement: var(--pm-virement);
+  --color-pm-carte: var(--pm-carte);
+
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  /*
+   * La voix « titre » : Archivo élargi sur son axe de largeur. Le contraste
+   * avec le texte courant vient de la LARGEUR, pas d'une seconde police —
+   * un forfait data sénégalais ne paie pas pour deux familles.
+   */
+  .titre {
+    font-family: var(--font-archivo);
+    font-stretch: 118%;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.02;
+  }
+
+  /* Montants en FCFA : chiffres tabulaires, jamais de gigue à l'alignement. */
+  .chiffre {
+    font-variant-numeric: tabular-nums lining-nums;
+    font-feature-settings: "tnum" 1;
+  }
+
+  /*
+   * Pas de flèches sur les montants : on incrémente rarement un prix de 1 FCFA,
+   * et elles encombrent le champ. Le type reste `number` pour le pavé
+   * numérique sur mobile.
+   */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+
+  /* Code SYSCOHADA : un numéro de compte, traité comme tel. */
+  .code-compte {
+    font-family: var(--font-plex-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.04em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /*
+   * La réglure du cahier. Les rangées se posent DESSUS : le pas vertical
+   * (2.75rem) est la hauteur de ligne du registre, pas une décoration.
+   */
+  .papier-regle {
+    background-image: repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent calc(2.75rem - 1px),
+      var(--reglure) calc(2.75rem - 1px),
+      var(--reglure) 2.75rem
+    );
+    background-position: 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

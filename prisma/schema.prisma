@@ -1,0 +1,279 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  COMPTABLE
+  EMPLOYE
+}
+
+enum PaymentMethod {
+  ESPECES
+  WAVE
+  ORANGE_MONEY
+  VIREMENT
+  CARTE
+}
+
+enum ExpenseStatus {
+  EN_ATTENTE
+  VALIDEE
+}
+
+enum OcrStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+enum RecurringFrequency {
+  MENSUELLE
+  TRIMESTRIELLE
+}
+
+enum BudgetPeriod {
+  MONTHLY
+  QUARTERLY
+}
+
+enum ReportStatus {
+  BROUILLON
+  SOUMISE
+  APPROUVEE
+  REJETEE
+  REMBOURSEE
+}
+
+enum ApprovalAction {
+  SOUMISSION
+  APPROBATION
+  REJET
+  REMBOURSEMENT
+  CORRECTION
+}
+
+enum SubscriptionPlan {
+  STARTER
+  PRO
+  BUSINESS
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  SUSPENDED
+  CANCELED
+}
+
+enum PaymentProvider {
+  WAVE
+  ORANGE_MONEY
+  STRIPE
+}
+
+// ─────────────────────────────────────────────────────────
+// Modeles
+// ─────────────────────────────────────────────────────────
+
+// id = identifiant d'organisation Clerk (org_xxx) : Clerk est la source de verite
+model Organization {
+  id       String  @id
+  name     String
+  logo     String?
+  currency String  @default("XOF")
+  settings Json?
+
+  // Suppression en deux temps (choix produit) : le webhook Clerk pose cette
+  // date, l'entreprise devient aussitot inaccessible, et la purge efface tout
+  // 30 jours plus tard. Un registre comptable ne s'efface pas sur un clic.
+  deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships       Membership[]
+  categories        Category[]
+  expenses          Expense[]
+  recurringExpenses RecurringExpense[]
+  budgets           Budget[]
+  expenseReports    ExpenseReport[]
+  subscriptions     Subscription[]
+  auditLogs         AuditLog[]
+}
+
+// userId = identifiant Clerk (pas de table User locale : Clerk est la source de verite)
+model Membership {
+  id             String   @id @default(cuid())
+  userId         String
+  organizationId String
+  role           Role
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+}
+
+model Category {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  codeSyscohada  String?
+  color          String?
+  isDefault      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  expenses     Expense[]
+  budgets      Budget[]
+
+  @@index([organizationId])
+}
+
+model Expense {
+  id             String        @id @default(cuid())
+  organizationId String
+  amount         Int
+  date           DateTime
+  categoryId     String
+  supplier       String?
+  paymentMethod  PaymentMethod
+  description    String?
+  status         ExpenseStatus @default(EN_ATTENTE)
+  createdById    String
+  reportId       String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  category     Category       @relation(fields: [categoryId], references: [id])
+  report       ExpenseReport? @relation(fields: [reportId], references: [id])
+  receipts     Receipt[]
+
+  @@index([organizationId])
+  @@index([reportId])
+  @@index([categoryId])
+}
+
+model Receipt {
+  id         String    @id @default(cuid())
+  expenseId  String
+  fileUrl    String
+  ocrData    Json?
+  ocrStatus  OcrStatus @default(PENDING)
+  confidence Float?
+  createdAt  DateTime  @default(now())
+
+  expense Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+
+  @@index([expenseId])
+}
+
+model RecurringExpense {
+  id             String             @id @default(cuid())
+  organizationId String
+  template       Json
+  frequency      RecurringFrequency
+  nextRunAt      DateTime
+  active         Boolean            @default(true)
+  createdAt      DateTime           @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+model Budget {
+  id              String       @id @default(cuid())
+  organizationId  String
+  categoryId      String?
+  amount          Int
+  period          BudgetPeriod
+  alertThresholds Int[]        @default([80, 100])
+  startDate       DateTime     @default(now())
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  category     Category?    @relation(fields: [categoryId], references: [id])
+
+  @@index([organizationId])
+}
+
+model ExpenseReport {
+  id              String       @id @default(cuid())
+  organizationId  String
+  employeeId      String
+  title           String
+  status          ReportStatus @default(BROUILLON)
+  totalAmount     Int          @default(0)
+  submittedAt     DateTime?
+  rejectionReason String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  expenses     Expense[]
+  approvals    Approval[]
+
+  @@index([organizationId])
+  @@index([employeeId])
+}
+
+model Approval {
+  id        String         @id @default(cuid())
+  reportId  String
+  actorId   String
+  action    ApprovalAction
+  comment   String?
+  createdAt DateTime       @default(now())
+
+  report ExpenseReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+}
+
+model Subscription {
+  id               String             @id @default(cuid())
+  organizationId   String
+  plan             SubscriptionPlan
+  status           SubscriptionStatus @default(TRIALING)
+  provider         PaymentProvider
+  currentPeriodEnd DateTime
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+model AuditLog {
+  id             String   @id @default(cuid())
+  organizationId String
+  actorId        String
+  entity         String
+  entityId       String?
+  action         String
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}

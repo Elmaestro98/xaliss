@@ -1,0 +1,26 @@
+export const DEFAULT_CATEGORIES = [
+  { name: "Achats de marchandises", codeSyscohada: "601", color: "#0ea5e9" },
+  { name: "Eau", codeSyscohada: "6051", color: "#06b6d4" },
+  { name: "Électricité", codeSyscohada: "6052", color: "#eab308" },
+  { name: "Carburant", codeSyscohada: "6053", color: "#f97316" },
+  { name: "Fournitures de bureau", codeSyscohada: "6055", color: "#a855f7" },
+  { name: "Transport et déplacements", codeSyscohada: "614", color: "#3b82f6" },
+  {
+    name: "Loyer et charges locatives",
+    codeSyscohada: "622",
+    color: "#8b5cf6",
+  },
+  { name: "Entretien et réparations", codeSyscohada: "624", color: "#14b8a6" },
+  { name: "Assurances", codeSyscohada: "625", color: "#64748b" },
+  {
+    name: "Publicité et communication",
+    codeSyscohada: "627",
+    color: "#ec4899",
+  },
+  { name: "Télécommunications", codeSyscohada: "628", color: "#6366f1" },
+  { name: "Frais bancaires", codeSyscohada: "631", color: "#78716c" },
+  { name: "Honoraires et conseils", codeSyscohada: "632", color: "#0891b2" },
+  { name: "Impôts et taxes", codeSyscohada: "64", color: "#dc2626" },
+  { name: "Charges de personnel", codeSyscohada: "661", color: "#16a34a" },
+  { name: "Autres charges", codeSyscohada: "658", color: "#94a3b8" },
+] as const;

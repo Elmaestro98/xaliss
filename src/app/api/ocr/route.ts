@@ -1,7 +1,13 @@
 import type { NextRequest } from "next/server";
+import {
+  AbonnementError,
+  assertPeutEcrire,
+  etatCourant,
+} from "@/lib/abonnement";
 import { extraireDonneesRecu } from "@/lib/ocr";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { assertQuotaOcr, enregistrerUsageOcr } from "@/lib/quotas";
 import { requireSession } from "@/lib/session";
 import { TAILLE_MAX_JUSTIFICATIF, TYPES_JUSTIFICATIF } from "@/lib/storage";
 
@@ -16,6 +22,20 @@ export async function POST(request: NextRequest) {
   const session = await requireSession();
   if (!can(session.role, "expenses:write")) {
     return Response.json({ erreur: "Accès refusé" }, { status: 403 });
+  }
+
+  // Le quota OCR protège une dépense réelle (appels Gemini) : il se vérifie
+  // avant l'appel, jamais après. 402 « Payment Required » plutôt que 403 —
+  // ce n'est pas un droit qui manque, c'est un plan à faire évoluer.
+  try {
+    const etat = await etatCourant(session.organizationId);
+    assertPeutEcrire(etat);
+    await assertQuotaOcr(etat.plan, session.organizationId);
+  } catch (erreur) {
+    if (erreur instanceof AbonnementError) {
+      return Response.json({ erreur: erreur.message }, { status: 402 });
+    }
+    throw erreur;
   }
 
   const donnees = await request.formData();
@@ -49,6 +69,14 @@ export async function POST(request: NextRequest) {
       fichier,
       nomsCategories: categories.map((c) => c.name),
     });
+
+    // Compté seulement maintenant : une panne de Gemini ne doit pas amputer
+    // le quota du client de ce qu'il n'a pas obtenu.
+    await enregistrerUsageOcr({
+      organizationId: session.organizationId,
+      userId: session.userId,
+    });
+
     return Response.json(extraction);
   } catch {
     // Panne ou clé absente : le formulaire reste utilisable à la main,

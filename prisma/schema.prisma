@@ -20,6 +20,8 @@ enum Role {
   EMPLOYE
 }
 
+// Comment la PME regle SES fournisseurs. A ne pas confondre avec
+// PaymentProvider, qui dit comment elle paie Xaalis.
 enum PaymentMethod {
   ESPECES
   WAVE
@@ -79,10 +81,27 @@ enum SubscriptionStatus {
   CANCELED
 }
 
+// Comment la PME paie SON abonnement Xaalis. Seul WAVE est implemente en V1
+// (PROJET.md section 6) ; ORANGE_MONEY et STRIPE sont reserves pour la V2 et ne
+// sont references nulle part dans le code. Les conserver ici ne coute rien et
+// evite une migration d'enum le jour ou l'un des deux arrive.
 enum PaymentProvider {
   WAVE
   ORANGE_MONEY
   STRIPE
+}
+
+// Le paiement annuel offre deux mois (PROJET.md section 11)
+enum BillingCycle {
+  MONTHLY
+  YEARLY
+}
+
+enum PaymentStatus {
+  PENDING // cree, le client n'a pas encore dit avoir paye
+  AWAITING_VERIFICATION // le client declare avoir paye : reste a confirmer sur Wave Business
+  SUCCEEDED
+  FAILED
 }
 
 // ─────────────────────────────────────────────────────────
@@ -111,7 +130,9 @@ model Organization {
   recurringExpenses RecurringExpense[]
   budgets           Budget[]
   expenseReports    ExpenseReport[]
-  subscriptions     Subscription[]
+  subscription      Subscription?
+  payments          Payment[]
+  ocrUsages         OcrUsage[]
   auditLogs         AuditLog[]
 }
 
@@ -248,19 +269,83 @@ model Approval {
   @@index([reportId])
 }
 
+// Un seul abonnement courant par entreprise (organizationId @unique) : garder
+// un historique ici obligerait chaque lecture a deviner lequel fait foi. Les
+// paiements successifs vivent dans Payment, qui est le vrai historique.
 model Subscription {
-  id               String             @id @default(cuid())
-  organizationId   String
-  plan             SubscriptionPlan
-  status           SubscriptionStatus @default(TRIALING)
-  provider         PaymentProvider
+  id             String             @id @default(cuid())
+  organizationId String             @unique
+  plan           SubscriptionPlan
+  status         SubscriptionStatus @default(TRIALING)
+  billingCycle   BillingCycle       @default(MONTHLY)
+
+  // Nullable : pendant l'essai gratuit, aucun prestataire n'est encore choisi.
+  provider PaymentProvider?
+
+  // Fin de l'essai tant que status = TRIALING, fin de la periode payee ensuite.
   currentPeriodEnd DateTime
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
+
+  // Pose a l'entree en PAST_DUE : 7 jours plus tard, l'acces passe en lecture
+  // seule. Stocke plutot que recalcule, pour qu'un changement de politique ne
+  // raccourcisse pas retroactivement le delai deja annonce a un client.
+  graceEndsAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  payments     Payment[]
+}
+
+// Une ligne par tentative de paiement : c'est a la fois la trace technique de
+// la transaction et la facture presentee au client (PROJET.md section 4.5).
+model Payment {
+  id             String @id @default(cuid())
+  organizationId String
+  subscriptionId String
+
+  // Notre reference, affichee comme numero de facture et dictee au client pour
+  // qu'il l'inscrive en motif de son paiement Wave. Unique : c'est le seul fil
+  // qui relie un virement recu sur le portefeuille marchand a l'entreprise qui
+  // l'a emis (PROJET.md section 9).
+  reference String @unique
+
+  provider     PaymentProvider
+  plan         SubscriptionPlan
+  billingCycle BillingCycle
+  amount       Int // FCFA, entier (PROJET.md section 6)
+  status       PaymentStatus   @default(PENDING)
+
+  // Identifiant de transaction Wave (TAxxx), recopie par le client depuis son
+  // recu au moment ou il declare avoir paye. C'est la piece a rapprocher du
+  // portefeuille marchand avant validation — declaratif, donc sans confiance
+  // tant qu'un humain ne l'a pas verifie.
+  providerTransactionId String?
+
+  paidAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([subscriptionId])
+}
+
+// Compteur des scans OCR (PROJET.md section 11 : 20 / 200 / illimite par mois).
+// On compte les APPELS a l'API Gemini, pas les recus conserves : c'est le cout
+// de l'appel que le quota protege, et un utilisateur qui scanne sans
+// enregistrer le consomme quand meme.
+model OcrUsage {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String
+  createdAt      DateTime @default(now())
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  @@index([organizationId])
+  @@index([organizationId, createdAt])
 }
 
 model AuditLog {

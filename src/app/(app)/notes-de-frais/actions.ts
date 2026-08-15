@@ -5,6 +5,12 @@ import { redirect } from "next/navigation";
 import { clerkClient } from "@clerk/nextjs/server";
 import * as z from "zod";
 import { Role } from "@/generated/prisma/enums";
+import {
+  AbonnementError,
+  assertFonctionnalite,
+  assertPeutEcrire,
+  etatCourant,
+} from "@/lib/abonnement";
 import { verifierAlertesBudget } from "@/lib/alertes-budget";
 import { envoyerEmail } from "@/lib/email";
 import { formatFCFA } from "@/lib/format";
@@ -89,6 +95,19 @@ export async function creerNote(
 ): Promise<EtatFormulaire> {
   const session = await requireSession();
   assertCan(session.role, "reports:submit");
+
+  // Les notes de frais sont incluses à partir du plan Pro (PROJET.md §11).
+  // Le contrôle est posé à la création : une note déjà ouverte doit pouvoir
+  // suivre son cours jusqu'au remboursement, même après un changement de plan
+  // — un employé ne doit pas rester avec une avance non remboursée.
+  const etat = await etatCourant(session.organizationId);
+  try {
+    assertPeutEcrire(etat);
+    assertFonctionnalite(etat.plan, "notes-de-frais");
+  } catch (erreur) {
+    if (erreur instanceof AbonnementError) return { message: erreur.message };
+    throw erreur;
+  }
 
   const resultat = SchemaNote.safeParse({ title: donnees.get("title") });
   if (!resultat.success) {

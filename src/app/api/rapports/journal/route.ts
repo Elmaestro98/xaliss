@@ -1,6 +1,7 @@
 import ExcelJS from "exceljs";
 import { NextRequest } from "next/server";
 import { clerkClient } from "@clerk/nextjs/server";
+import { AbonnementError, assertFonctionnalite, etatCourant } from "@/lib/abonnement";
 import { dansLeJournal } from "@/lib/journal";
 import { MOYENS_PAIEMENT } from "@/lib/paiement";
 import { can } from "@/lib/permissions";
@@ -17,6 +18,19 @@ export async function GET(request: NextRequest) {
   const session = await requireSession();
   if (!can(session.role, "exports:generate")) {
     return new Response("Interdit", { status: 403 });
+  }
+
+  // Excel est réservé aux plans Pro et Business (PROJET.md §11) ; l'export PDF
+  // reste ouvert à tous, y compris en abonnement suspendu — on ne retient pas
+  // en otage la comptabilité d'un client qui s'en va.
+  try {
+    const etat = await etatCourant(session.organizationId);
+    assertFonctionnalite(etat.plan, "export-excel");
+  } catch (erreur) {
+    if (erreur instanceof AbonnementError) {
+      return new Response(erreur.message, { status: 402 });
+    }
+    throw erreur;
   }
 
   const periode = resoudrePeriodeMois(

@@ -42,7 +42,7 @@ export function FormulaireCategorie() {
     <form
       ref={formRef}
       action={action}
-      className="mt-4 border border-reglure bg-card px-4 py-4"
+      className="mt-4 rounded-xl border border-reglure bg-card px-4 py-4"
     >
       <div className="flex flex-wrap items-end gap-3">
         <div>
@@ -55,7 +55,7 @@ export function FormulaireCategorie() {
             name="color"
             defaultValue="#2b3a8f"
             aria-label="Couleur de la catégorie"
-            className="mt-1.5 block size-9 cursor-pointer rounded-[3px] border border-reglure bg-card p-0.5"
+            className="mt-1.5 block size-9 cursor-pointer rounded-[3px] rounded-xl border border-reglure bg-card p-0.5"
           />
         </div>
 

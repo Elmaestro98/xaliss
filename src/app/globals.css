@@ -5,103 +5,189 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * XAALIS — système visuel
+ * XAALIS — système visuel : « le cahier, la nuit »
  *
- * Métaphore : le cahier. Xaalis remplace le registre papier des PME
- * sénégalaises, donc l'interface en emprunte la structure — papier réglé,
- * encre indigo, lignes qui portent les rangées.
+ * Métaphore. Xaalis remplace le registre papier des PME sénégalaises. La
+ * boutique ferme, la comptabilité reste : le thème par défaut est donc le
+ * même cahier réglé vu sous la lampe. Ce n'est pas un « dashboard sombre »
+ * de plus — c'est du papier à l'encre indigo, éteint.
  *
- * Règle de palette : Wave (cyan) et Orange Money (orange) sont des DONNÉES,
+ * Conséquences, dans l'ordre :
+ *
+ * 1. LE FOND N'EST PAS GRIS. #0B0D12 est un bleu-noir (teinte ~226°), la
+ *    couleur de l'indigo à pleine profondeur. Un noir neutre (#0A0A0A) est
+ *    le réglage par défaut de tout le monde ; l'indigo est celui de Xaalis.
+ *
+ * 2. LA RÉGLURE PORTE, ELLE NE DÉCORE PAS. Les lignes du cahier deviennent
+ *    des filets de 1px. Aucune ombre nulle part : une carte se détache par
+ *    son ton et son filet, comme une feuille posée sur une autre.
+ *
+ * 3. LA RÉGLURE EST AUSSI LA TEXTURE. Là où un dashboard hachure ses barres
+ *    inactives en diagonale, Xaalis les hachure avec SA PROPRE réglure : les
+ *    barres sont découpées dans du papier réglé. Même motif à deux pas —
+ *    0.375rem dans les barres (texture), 2.75rem dans les listes (structure,
+ *    les rangées se posent vraiment dessus).
+ *
+ * Règle de palette. Wave (cyan) et Orange Money (orange) sont des DONNÉES,
  * pas du décor — ils viennent de l'enum PaymentMethod. Ils crient. Le décor
  * doit donc rester sobre pour les laisser parler : la marque n'est ni cyan
  * ni orange.
  */
-:root {
-  --papier: #eef1f7; /* fond : blanc froid de papier réglé */
-  --reglure: #ccd8ea; /* le bleu des lignes du cahier -> bordures */
-  --encre: #131720; /* texte */
-  --indigo: #2b3a8f; /* marque : teinture indigo, encre du registre */
-  --vert: #17835a; /* sous le budget, validé */
-  --ocre: #b45309; /* seuil d'alerte 80 % */
-  --brique: #b42318; /* dépassement, rejet */
 
-  /* Moyens de paiement — couleurs de données (enum PaymentMethod) */
+/* ------------------------------------------------------------------ */
+/* JOUR — le cahier ouvert sur un bureau. Reste disponible : un employé   */
+/* qui saisit un reçu dehors, en plein soleil, ne lit pas un écran noir.  */
+/* ------------------------------------------------------------------ */
+:root {
+  --papier: #eef1f7; /* fond de page : blanc froid de papier réglé */
+  --feuille: #ffffff; /* la carte : la feuille sur laquelle on écrit */
+  --pose: #e4eaf4; /* une surface posée SUR la feuille (champ, segment) */
+  --reglure: #ccd8ea; /* le bleu des lignes du cahier -> filets */
+  --encre: #131720; /* texte */
+  --encre-pale: #5a6782; /* texte secondaire */
+  --indigo: #2b3a8f; /* marque : teinture indigo, encre du registre */
+
+  --vert: #17835a; /* sous le budget, validé, payé */
+  --ocre: #b45309; /* seuil d'alerte 80 %, en attente */
+  --brique: #b42318; /* dépassement, rejet, impayé */
+
+  /* Moyens de paiement — couleurs de DONNÉES (enum PaymentMethod). */
   --pm-especes: #17835a;
   --pm-wave: #12b5e5;
   --pm-orange-money: #ff7900;
   --pm-virement: #64748b;
   --pm-carte: #7c3aed;
 
+  /*
+   * Catégories de dépense. Category.color est saisissable, donc ceci n'est
+   * qu'un jeu par défaut — mais il doit tenir sur les deux thèmes, sinon une
+   * catégorie lisible le jour disparaît la nuit.
+   */
+  --cat-1: #2b3a8f;
+  --cat-2: #17835a;
+  --cat-3: #b45309;
+  --cat-4: #c2410c;
+  --cat-5: #7c3aed;
+  --cat-6: #0e7490;
+  --cat-7: #be185d;
+  --cat-8: #64748b;
+
   /* Correspondance avec les jetons shadcn */
   --background: var(--papier);
   --foreground: var(--encre);
-  --card: #ffffff;
+  --card: var(--feuille);
   --card-foreground: var(--encre);
-  --popover: #ffffff;
+  --popover: var(--feuille);
   --popover-foreground: var(--encre);
   --primary: var(--indigo);
   --primary-foreground: #ffffff;
   --secondary: #dfe6f2;
   --secondary-foreground: var(--indigo);
-  --muted: #e4eaf4;
-  --muted-foreground: #5a6782;
+  --muted: var(--pose);
+  --muted-foreground: var(--encre-pale);
   --accent: #dfe6f2;
   --accent-foreground: var(--indigo);
   --destructive: var(--brique);
+  --destructive-foreground: #ffffff;
   --border: var(--reglure);
   --input: var(--reglure);
   --ring: var(--indigo);
 
-  /* Un registre est équerré : rayon serré, mais non nul. */
-  --radius: 0.25rem;
+  /*
+   * Rayon. Le registre papier était équerré ; l'écran ne l'est pas — un coin
+   * vif sur fond sombre scintille, et le produit doit rester tenable au
+   * pouce. 0.75rem : arrondi assumé, jamais la pastille molle.
+   */
+  --radius: 0.75rem;
 
-  --chart-1: var(--indigo);
-  --chart-2: var(--pm-wave);
-  --chart-3: var(--vert);
-  --chart-4: var(--ocre);
-  --chart-5: var(--pm-carte);
+  --chart-1: var(--cat-1);
+  --chart-2: var(--cat-2);
+  --chart-3: var(--cat-3);
+  --chart-4: var(--cat-4);
+  --chart-5: var(--cat-5);
 
-  --sidebar: var(--encre);
-  --sidebar-foreground: #c3cbdd;
+  /* La couverture du cahier : sombre même le jour. */
+  --sidebar: #131720;
+  --sidebar-foreground: #a9b4ca;
   --sidebar-primary: #ffffff;
-  --sidebar-primary-foreground: var(--encre);
-  --sidebar-accent: #232938;
+  --sidebar-primary-foreground: #131720;
+  --sidebar-accent: #1e2534;
   --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #262d3d;
-  --sidebar-ring: var(--indigo);
+  --sidebar-border: #242c3d;
+  --sidebar-ring: #7c8cf8;
 }
 
+/* ------------------------------------------------------------------ */
+/* NUIT — le thème par défaut.                                           */
+/* ------------------------------------------------------------------ */
 .dark {
-  --papier: #0f1319;
-  --reglure: #2a3446;
-  --encre: #e8ecf4;
+  --papier: #0b0d12; /* bleu-noir d'encre, PAS un gris neutre */
+  --feuille: #12151e; /* la feuille, à peine relevée du fond */
+  --pose: #1a1f2b; /* une surface posée sur la feuille */
+  --reglure: #232a3a; /* la réglure : filets de 1px, jamais d'ombre */
+  --encre: #e9edf7; /* l'encre s'inverse : le texte devient le papier */
+  --encre-pale: #8d98b3;
+  --indigo: #7c8cf8; /* l'indigo éclairci : sur le noir, il éclaire */
+
+  --vert: #3ecf8e;
+  --ocre: #e8a33d;
+  --brique: #ff6b6b;
+
+  --pm-virement: #8d98b3;
+  --pm-carte: #a78bfa;
+  --pm-especes: #3ecf8e;
+  /* Wave et Orange Money gardent leur valeur de marque : ce sont des faits. */
+
+  --cat-1: #7c8cf8;
+  --cat-2: #3ecf8e;
+  --cat-3: #e8a33d;
+  --cat-4: #f2724b;
+  --cat-5: #a78bfa;
+  --cat-6: #22b8cf;
+  --cat-7: #e8639b;
+  --cat-8: #8d98b3;
 
   --background: var(--papier);
   --foreground: var(--encre);
-  --card: #161b24;
+  --card: var(--feuille);
   --card-foreground: var(--encre);
-  --popover: #161b24;
+  --popover: var(--feuille);
   --popover-foreground: var(--encre);
-  --primary: #8c9cf0;
-  --primary-foreground: #0f1319;
-  --secondary: #1e2634;
-  --secondary-foreground: #c8d2ee;
-  --muted: #1e2634;
-  --muted-foreground: #94a1bd;
-  --accent: #1e2634;
-  --accent-foreground: #c8d2ee;
-  --destructive: #f0574a;
-  --border: var(--reglure);
-  --input: #2a3446;
-  --ring: #8c9cf0;
 
-  --sidebar: #0b0e13;
-  --sidebar-foreground: #a9b4ca;
-  --sidebar-primary: #ffffff;
-  --sidebar-primary-foreground: #0b0e13;
-  --sidebar-accent: #1a212c;
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #1f2632;
+  /*
+   * L'indigo éclairci ne porte pas de texte blanc (3:1, sous le seuil) : sur
+   * un bouton plein, le texte redevient l'encre de la nuit. C'est aussi ce
+   * que fait la pastille active d'un sélecteur — clair sur sombre, inversé.
+   */
+  --primary: var(--indigo);
+  --primary-foreground: #0b0d12;
+  --secondary: var(--pose);
+  --secondary-foreground: #c8d2ee;
+  --muted: var(--pose);
+  --muted-foreground: var(--encre-pale);
+  --accent: var(--pose);
+  --accent-foreground: #c8d2ee;
+  --destructive: var(--brique);
+  --destructive-foreground: #0b0d12;
+  --border: var(--reglure);
+  --input: #2a3243;
+  --ring: var(--indigo);
+
+  --chart-1: var(--cat-1);
+  --chart-2: var(--cat-2);
+  --chart-3: var(--cat-3);
+  --chart-4: var(--cat-4);
+  --chart-5: var(--cat-5);
+
+  /* La couverture est le ton le plus profond : le cahier reste fermé autour. */
+  --sidebar: #07090e;
+  --sidebar-foreground: #8d98b3;
+  --sidebar-primary: var(--indigo);
+  --sidebar-primary-foreground: #07090e;
+  --sidebar-accent: #151a25;
+  --sidebar-accent-foreground: #e9edf7;
+  --sidebar-border: #1a1f2b;
+  --sidebar-ring: var(--indigo);
 }
 
 @theme inline {
@@ -113,8 +199,11 @@
   --font-heading: var(--font-archivo);
 
   --color-papier: var(--papier);
+  --color-feuille: var(--feuille);
+  --color-pose: var(--pose);
   --color-reglure: var(--reglure);
   --color-encre: var(--encre);
+  --color-encre-pale: var(--encre-pale);
   --color-indigo: var(--indigo);
   --color-vert: var(--vert);
   --color-ocre: var(--ocre);
@@ -125,6 +214,15 @@
   --color-pm-orange-money: var(--pm-orange-money);
   --color-pm-virement: var(--pm-virement);
   --color-pm-carte: var(--pm-carte);
+
+  --color-cat-1: var(--cat-1);
+  --color-cat-2: var(--cat-2);
+  --color-cat-3: var(--cat-3);
+  --color-cat-4: var(--cat-4);
+  --color-cat-5: var(--cat-5);
+  --color-cat-6: var(--cat-6);
+  --color-cat-7: var(--cat-7);
+  --color-cat-8: var(--cat-8);
 
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -143,6 +241,7 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -155,12 +254,13 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
+
+  --radius-sm: calc(var(--radius) * 0.5);
+  --radius-md: calc(var(--radius) * 0.7);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-xl: calc(var(--radius) * 1.35);
+  --radius-2xl: calc(var(--radius) * 1.7);
+  --radius-3xl: calc(var(--radius) * 2.1);
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
@@ -173,6 +273,17 @@
   }
   html {
     @apply font-sans;
+  }
+
+  /*
+   * La nuit, un fond noir sous une barre de défilement claire fait une
+   * bande blanche à droite de chaque liste. On accorde les deux.
+   */
+  html {
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
   }
 }
 
@@ -197,6 +308,97 @@
   }
 
   /*
+   * Le montant héros — le total du mois, le prix d'un plan, le solde d'une
+   * note. Un seul par écran : c'est ce qui fait qu'on sait où regarder en
+   * entrant. Taille fluide, parce que le même chiffre doit tenir sur un
+   * téléphone d'entrée de gamme comme sur l'écran du comptable.
+   */
+  .chiffre-affichage {
+    font-family: var(--font-archivo);
+    font-stretch: 112%;
+    font-weight: 700;
+    font-size: clamp(2.25rem, 1.4rem + 4.2vw, 4rem);
+    line-height: 0.95;
+    letter-spacing: -0.035em;
+    font-variant-numeric: tabular-nums lining-nums;
+    font-feature-settings: "tnum" 1;
+  }
+
+  /*
+   * L'en-tête de colonne du registre. Un cahier comptable titre ses colonnes
+   * en petites capitales ; c'est la seule raison pour laquelle cette voix
+   * existe — pas pour saupoudrer des étiquettes décoratives.
+   */
+  .mention {
+    font-family: var(--font-plex-mono);
+    font-size: 0.6875rem;
+    line-height: 1.2;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--encre-pale);
+  }
+
+  /* Code SYSCOHADA : un numéro de compte, traité comme tel. */
+  .code-compte {
+    font-family: var(--font-plex-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.04em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /*
+   * LA RÉGLURE, PAS 1 — structure. Les rangées se posent DESSUS : le pas
+   * vertical (2.75rem) est la hauteur de ligne du registre, pas une
+   * décoration. À n'utiliser que là où des rangées existent réellement.
+   */
+  .papier-regle {
+    background-image: repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent calc(2.75rem - 1px),
+      var(--reglure) calc(2.75rem - 1px),
+      var(--reglure) 2.75rem
+    );
+    background-position: 0 0;
+  }
+
+  /*
+   * LA RÉGLURE, PAS 2 — texture. Le même trait, resserré, remplit ce qui est
+   * en retrait : les barres d'un graphe autres que celle qu'on regarde. Une
+   * donnée secondaire n'est pas grisée, elle est RÉGLÉE — elle reste du
+   * papier, elle n'est simplement pas encore écrite.
+   */
+  .regle-texture {
+    background-color: color-mix(in srgb, var(--reglure) 45%, transparent);
+    background-image: repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent calc(0.375rem - 1px),
+      var(--reglure) calc(0.375rem - 1px),
+      var(--reglure) 0.375rem
+    );
+    /*
+     * Ancré en BAS, et c'est structurel. Une barre qui grandit vers le haut
+     * part du bas : si la réglure était ancrée en haut (le défaut), les lignes
+     * glisseraient pendant que la barre pousse, comme du papier qui défile
+     * sous la plume. Ancrée en bas, le papier reste immobile et la barre
+     * découvre ce qui y était déjà tracé.
+     */
+    background-position: 0 100%;
+  }
+
+  /*
+   * Le liseré des surfaces. Aucune ombre dans Xaalis : une feuille posée sur
+   * une autre se signale par son ton et son filet. Les ombres portées
+   * supposent une source de lumière — un cahier n'en a pas.
+   */
+  .feuille {
+    background-color: var(--feuille);
+    border: 1px solid var(--reglure);
+    border-radius: var(--radius-xl);
+  }
+
+  /*
    * Pas de flèches sur les montants : on incrémente rarement un prix de 1 FCFA,
    * et elles encombrent le champ. Le type reste `number` pour le pavé
    * numérique sur mobile.
@@ -210,28 +412,88 @@
     -moz-appearance: textfield;
     appearance: textfield;
   }
+}
 
-  /* Code SYSCOHADA : un numéro de compte, traité comme tel. */
-  .code-compte {
-    font-family: var(--font-plex-mono);
-    font-size: 0.6875rem;
-    letter-spacing: 0.04em;
-    font-variant-numeric: tabular-nums;
+/* ------------------------------------------------------------------ */
+/* MOUVEMENT                                                             */
+/*                                                                       */
+/* Tout est enfermé dans `prefers-reduced-motion: no-preference`, et      */
+/* c'est une règle de sécurité, pas de politesse. Ces animations partent  */
+/* d'un état invisible (`opacity: 0`, `height: 0`) : les neutraliser en   */
+/* réduisant leur durée laisserait du contenu caché à l'écran. Ne pas     */
+/* servir la règle du tout est le seul moyen sûr — sans elle, l'élément   */
+/* n'a jamais eu d'état de départ à restaurer.                           */
+/*                                                                       */
+/* CSS pur, aucune bibliothèque. Un téléphone d'entrée de gamme sur un    */
+/* forfait data sénégalais ne télécharge pas 30 ko de JavaScript pour     */
+/* voir une barre monter.                                                */
+/* ------------------------------------------------------------------ */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes xa-monte {
+    from {
+      opacity: 0;
+      transform: translateY(0.75rem);
+    }
+  }
+
+  /* Le trait du registre : il se tire de gauche à droite, comme à la règle. */
+  @keyframes xa-trait {
+    from {
+      transform: scaleX(0);
+    }
+  }
+
+  @keyframes xa-pousse {
+    from {
+      height: 0;
+    }
   }
 
   /*
-   * La réglure du cahier. Les rangées se posent DESSUS : le pas vertical
-   * (2.75rem) est la hauteur de ligne du registre, pas une décoration.
+   * `backwards` et non `both` : l'état de départ s'applique pendant le
+   * retard, puis l'élément revient à son style naturel. Avec `both`, la
+   * dernière image du keyframe resterait figée — une barre dont la hauteur
+   * est calculée en ligne ne pourrait plus jamais changer.
    */
-  .papier-regle {
-    background-image: repeating-linear-gradient(
-      to bottom,
-      transparent 0,
-      transparent calc(2.75rem - 1px),
-      var(--reglure) calc(2.75rem - 1px),
-      var(--reglure) 2.75rem
-    );
-    background-position: 0 0;
+  .anim-monte,
+  .anim-trait,
+  .anim-pousse {
+    animation-duration: 0.6s;
+    animation-timing-function: cubic-bezier(0.22, 0.7, 0.25, 1);
+    animation-fill-mode: backwards;
+    animation-delay: var(--retard, 0ms);
+  }
+
+  .anim-monte {
+    animation-name: xa-monte;
+  }
+
+  .anim-trait {
+    animation-name: xa-trait;
+    animation-duration: 0.7s;
+    transform-origin: left center;
+  }
+
+  .anim-pousse {
+    animation-name: xa-pousse;
+    animation-duration: 0.75s;
+  }
+
+  /*
+   * Apparition au défilement, sans une ligne de JavaScript ni un seul
+   * observateur. `@supports` fait le tri : là où les animations pilotées par
+   * le défilement n'existent pas encore (Firefox, Safari), la règle n'est
+   * jamais appliquée et le contenu s'affiche normalement. Une réserve
+   * volontairement peu ambitieuse — un texte qu'on ne peut pas lire parce que
+   * le navigateur ne connaît pas une propriété n'est pas une animation ratée,
+   * c'est une page cassée.
+   */
+  @supports (animation-timeline: view()) {
+    .revele {
+      animation: xa-monte linear both;
+      animation-timeline: view();
+      animation-range: entry 5% cover 22%;
+    }
   }
 }
 

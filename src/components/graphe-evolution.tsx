@@ -1,46 +1,57 @@
 "use client";
 
-import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
+import { Bar, BarChart, Cell, XAxis } from "recharts";
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
+import { MotifReglure, REMPLISSAGE_REGLURE } from "@/components/motif-reglure";
 import { formatFCFA } from "@/lib/format";
 
 type Point = { label: string; montant: number };
 
-// Encre indigo, déclinée pour chaque thème : le #2b3a8f du clair serait trop
-// sombre sur la couverture nocturne du cahier.
 const config = {
-  montant: { label: "Dépenses", theme: { light: "#2b3a8f", dark: "#8c9cf0" } },
+  montant: { label: "Dépenses", color: "var(--indigo)" },
 } satisfies ChartConfig;
 
 /**
- * L'évolution mensuelle (PROJET.md §4.4) : une aire, la tendance d'un coup
- * d'œil. Le montant exact d'un mois apparaît au survol — le total du mois est
- * déjà écrit en grand plus haut.
+ * L'évolution mensuelle (PROJET.md §4.4) — et le geste signature de Xaalis.
+ *
+ * Les mois passés sont RÉGLÉS : remplis du papier du cahier, présents mais pas
+ * le sujet. Le mois courant est écrit à l'encre indigo, plein. C'est la seule
+ * chose que l'œil attrape en arrivant, et c'est la bonne : « où j'en suis
+ * maintenant », pas « où j'en étais en mars ».
+ *
+ * Volontairement sans étiquette de montant sur les barres. En FCFA un mois
+ * s'écrit « 1 250 000 » — sept caractères qui ne tiennent pas dans une barre
+ * de téléphone. Le total exact est déjà en grand au-dessus du graphe, et
+ * chaque mois se lit au toucher.
  */
 export function GrapheEvolution({ points }: { points: Point[] }) {
+  const dernier = points.length - 1;
+
   return (
-    <ChartContainer config={config} className="aspect-[16/6] w-full">
-      <AreaChart accessibilityLayer data={points} margin={{ left: 4, right: 4, top: 8 }}>
+    <ChartContainer config={config} className="aspect-[16/7] w-full">
+      <BarChart
+        accessibilityLayer
+        data={points}
+        margin={{ left: 4, right: 4, top: 8 }}
+      >
         <defs>
-          <linearGradient id="fill-evolution" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--color-montant)" stopOpacity={0.25} />
-            <stop offset="100%" stopColor="var(--color-montant)" stopOpacity={0.02} />
-          </linearGradient>
+          <MotifReglure />
         </defs>
-        <CartesianGrid vertical={false} strokeDasharray="3 3" />
         <XAxis
           dataKey="label"
           tickLine={false}
           axisLine={false}
-          tickMargin={8}
+          tickMargin={10}
         />
         <ChartTooltip
-          cursor={{ stroke: "var(--reglure)" }}
+          // Le curseur par défaut pose un bloc plein derrière la barre visée et
+          // efface sa réglure. Un simple contour la laisse lisible.
+          cursor={{ fill: "transparent", stroke: "var(--reglure)" }}
           content={
             <ChartTooltipContent
               formatter={(value) => (
@@ -51,16 +62,15 @@ export function GrapheEvolution({ points }: { points: Point[] }) {
             />
           }
         />
-        <Area
-          dataKey="montant"
-          type="monotone"
-          stroke="var(--color-montant)"
-          strokeWidth={2}
-          fill="url(#fill-evolution)"
-          dot={false}
-          activeDot={{ r: 4 }}
-        />
-      </AreaChart>
+        <Bar dataKey="montant" radius={[6, 6, 0, 0]} maxBarSize={56}>
+          {points.map((point, index) => (
+            <Cell
+              key={point.label}
+              fill={index === dernier ? "var(--indigo)" : REMPLISSAGE_REGLURE}
+            />
+          ))}
+        </Bar>
+      </BarChart>
     </ChartContainer>
   );
 }

@@ -71,10 +71,10 @@ export default async function ParametresPage() {
 
       {/* Identité — lecture seule : elle vient de Clerk. */}
       <section className="mt-8">
-        <h2 className="code-compte uppercase text-muted-foreground">
+        <h2 className="mention">
           Entreprise
         </h2>
-        <div className="mt-2 flex items-center gap-4 border border-l-2 border-reglure border-l-indigo bg-card px-5 py-4">
+        <div className="mt-2 flex items-center gap-4 rounded-xl border border-l-2 border-reglure border-l-indigo bg-card px-5 py-4">
           <span
             aria-hidden
             className="titre flex size-12 shrink-0 items-center justify-center bg-indigo text-xl text-white"
@@ -113,7 +113,7 @@ export default async function ParametresPage() {
           dépense se range dans l&apos;une d&apos;elles.
         </p>
 
-        <ul className="mt-4 divide-y divide-reglure border border-reglure bg-card">
+        <ul className="mt-4 divide-y divide-reglure overflow-hidden rounded-xl border border-reglure bg-card">
           {categories.map((categorie) => (
             <LigneCategorie
               key={categorie.id}

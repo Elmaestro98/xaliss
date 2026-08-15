@@ -74,7 +74,7 @@ export default async function RecurrentesPage() {
       </p>
 
       {lignes.length > 0 && (
-        <ul className="mt-8 divide-y divide-reglure border border-reglure bg-card">
+        <ul className="mt-8 divide-y divide-reglure overflow-hidden rounded-xl border border-reglure bg-card">
           {lignes.map(({ recurrence, gabarit }) => (
             <li
               key={recurrence.id}

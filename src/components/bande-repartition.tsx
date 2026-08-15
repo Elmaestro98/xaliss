@@ -21,7 +21,7 @@ export function BandeRepartition({
 }) {
   if (total <= 0 || segments.length === 0) {
     return (
-      <div className="mt-5 flex h-11 items-center justify-center border border-dashed border-reglure bg-card">
+      <div className="mt-5 flex h-12 items-center justify-center rounded-xl border border-dashed border-reglure bg-card">
         <p className="text-sm text-muted-foreground">
           La bande se remplit dès la première dépense.
         </p>
@@ -45,7 +45,7 @@ export function BandeRepartition({
           .join(
             " ; ",
           )}${reste > 0 ? ` ; autres catégories, ${formatFCFA(reste)}` : ""}`}
-        className="flex h-11 w-full overflow-hidden rounded-sm border border-reglure"
+        className="flex h-12 w-full overflow-hidden rounded-lg border border-reglure"
       >
         {segments.map((segment) => (
           <div
@@ -56,14 +56,19 @@ export function BandeRepartition({
             }}
           />
         ))}
+        {/* Le reste n'est pas une catégorie : c'est ce que la bande ne détaille
+            pas. Il est donc réglé, pas coloré — du papier resté vierge. */}
         {reste > 0 && (
-          <div style={{ width: `${part(reste)}%` }} className="bg-muted" />
+          <div
+            style={{ width: `${part(reste)}%` }}
+            className="regle-texture"
+          />
         )}
       </div>
 
       {/* La légende se pose sur la réglure : chaque ligne fait une hauteur de
           ligne du cahier (2.75rem). */}
-      <ul className="papier-regle mt-4 border-y border-reglure bg-card">
+      <ul className="papier-regle mt-4 overflow-hidden rounded-xl border border-reglure bg-card">
         {segments.map((segment) => (
           <li
             key={segment.id}
@@ -71,7 +76,7 @@ export function BandeRepartition({
           >
             <span
               aria-hidden
-              className="size-2.5 shrink-0 rounded-[2px]"
+              className="size-2.5 shrink-0 rounded-full"
               style={{ backgroundColor: segment.couleur }}
             />
             <span className="code-compte w-10 shrink-0 text-muted-foreground">
@@ -90,7 +95,7 @@ export function BandeRepartition({
           <li className="flex h-11 items-center gap-3 px-3 text-sm text-muted-foreground">
             <span
               aria-hidden
-              className="size-2.5 shrink-0 rounded-[2px] bg-muted"
+              className="regle-texture size-2.5 shrink-0 rounded-full"
             />
             <span className="code-compte w-10 shrink-0">—</span>
             <span className="min-w-0 flex-1 truncate">Autres catégories</span>

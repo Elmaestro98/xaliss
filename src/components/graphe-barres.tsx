@@ -11,8 +11,9 @@ import { formatFCFA } from "@/lib/format";
 
 type Barre = { id: string; label: string; montant: number };
 
+// L'indigo suit déjà le thème dans globals.css : plus besoin de le décliner ici.
 const config = {
-  montant: { label: "Dépenses", theme: { light: "#2b3a8f", dark: "#8c9cf0" } },
+  montant: { label: "Dépenses", color: "var(--indigo)" },
 } satisfies ChartConfig;
 
 /**
@@ -60,8 +61,8 @@ export function GrapheBarres({ items }: { items: Barre[] }) {
         <Bar
           dataKey="montant"
           fill="var(--color-montant)"
-          radius={[0, 4, 4, 0]}
-          barSize={22}
+          radius={[0, 6, 6, 0]}
+          barSize={20}
         />
       </BarChart>
     </ChartContainer>

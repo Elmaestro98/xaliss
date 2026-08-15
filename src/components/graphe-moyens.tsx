@@ -7,7 +7,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import { formatFCFA } from "@/lib/format";
+import { formatFCFA, formatNombre } from "@/lib/format";
 
 type Moyen = { id: string; label: string; couleur: string; montant: number };
 
@@ -17,6 +17,9 @@ type Moyen = { id: string; label: string; couleur: string; montant: number };
  * pas du décor. Comme elles peuvent être claires, la légende chiffrée sous
  * l'anneau porte chaque montant en toutes lettres — la couleur n'informe jamais
  * seule.
+ *
+ * Le total vit au centre de l'anneau : c'est le seul endroit où la somme des
+ * parts et les parts elles-mêmes se lisent d'un même regard.
  */
 export function GrapheMoyens({ moyens }: { moyens: Moyen[] }) {
   if (moyens.length === 0) {
@@ -25,51 +28,66 @@ export function GrapheMoyens({ moyens }: { moyens: Moyen[] }) {
     );
   }
 
+  const total = moyens.reduce((somme, moyen) => somme + moyen.montant, 0);
+
   const config: ChartConfig = Object.fromEntries(
-    moyens.map((moyen) => [moyen.label, { label: moyen.label, color: moyen.couleur }]),
+    moyens.map((moyen) => [
+      moyen.label,
+      { label: moyen.label, color: moyen.couleur },
+    ]),
   );
 
   return (
     <div>
-      <ChartContainer config={config} className="mx-auto aspect-square max-h-48">
-        <PieChart>
-          <ChartTooltip
-            content={
-              <ChartTooltipContent
-                hideLabel
-                nameKey="label"
-                formatter={(value, name) => (
-                  <div className="flex w-full items-center justify-between gap-3">
-                    <span className="text-muted-foreground">{name}</span>
-                    <span className="chiffre font-medium text-foreground">
-                      {formatFCFA(Number(value))}
-                    </span>
-                  </div>
-                )}
-              />
-            }
-          />
-          <Pie
-            data={moyens}
-            dataKey="montant"
-            nameKey="label"
-            innerRadius={48}
-            strokeWidth={2}
-            stroke="var(--card)"
-          >
-            {moyens.map((moyen) => (
-              <Cell key={moyen.id} fill={moyen.couleur} />
-            ))}
-          </Pie>
-        </PieChart>
-      </ChartContainer>
+      <div className="relative mx-auto aspect-square max-h-52">
+        <ChartContainer config={config} className="size-full">
+          <PieChart>
+            <ChartTooltip
+              content={
+                <ChartTooltipContent
+                  hideLabel
+                  nameKey="label"
+                  formatter={(value, name) => (
+                    <div className="flex w-full items-center justify-between gap-3">
+                      <span className="text-muted-foreground">{name}</span>
+                      <span className="chiffre font-medium text-foreground">
+                        {formatFCFA(Number(value))}
+                      </span>
+                    </div>
+                  )}
+                />
+              }
+            />
+            <Pie
+              data={moyens}
+              dataKey="montant"
+              nameKey="label"
+              innerRadius="62%"
+              outerRadius="92%"
+              paddingAngle={2}
+              strokeWidth={0}
+            >
+              {moyens.map((moyen) => (
+                <Cell key={moyen.id} fill={moyen.couleur} />
+              ))}
+            </Pie>
+          </PieChart>
+        </ChartContainer>
 
-      <ul className="mt-3 space-y-1.5">
+        {/* Superposé plutôt que dessiné par recharts : le centre porte de la
+            typographie (chiffres tabulaires, mention), pas de la donnée. */}
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-0.5">
+          <span className="titre chiffre text-xl">{formatNombre(total)}</span>
+          <span className="mention">FCFA</span>
+        </div>
+      </div>
+
+      <ul className="mt-4 space-y-2">
         {moyens.map((moyen) => (
-          <li key={moyen.id} className="flex items-center gap-2 text-sm">
+          <li key={moyen.id} className="flex items-center gap-2.5 text-sm">
             <span
               aria-hidden
-              className="size-2.5 shrink-0 rounded-[2px]"
+              className="size-2.5 shrink-0 rounded-full"
               style={{ backgroundColor: moyen.couleur }}
             />
             <span className="min-w-0 flex-1 truncate">{moyen.label}</span>

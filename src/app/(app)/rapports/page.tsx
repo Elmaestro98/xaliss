@@ -113,9 +113,9 @@ export default async function RapportsPage({
       */}
       <form className="mt-8">
         {/* En-tête de feuillet — reprend la marge indigo de la navigation. */}
-        <div className="flex flex-wrap items-end justify-between gap-4 border border-l-2 border-reglure border-l-indigo bg-card px-5 py-4">
+        <div className="flex flex-wrap items-end justify-between gap-4 rounded-xl border border-l-2 border-reglure border-l-indigo bg-card px-5 py-4">
           <div>
-            <p className="code-compte uppercase text-muted-foreground">
+            <p className="mention">
               Période d&apos;extraction
             </p>
             <p className="titre mt-1 text-2xl">
@@ -129,7 +129,7 @@ export default async function RapportsPage({
         </div>
 
         {/* Les feuillets à détacher. */}
-        <ul className="mt-4 divide-y divide-reglure border border-reglure bg-card">
+        <ul className="mt-4 divide-y divide-reglure overflow-hidden rounded-xl border border-reglure bg-card">
           {feuillets.map((feuillet) => {
             const Icone = feuillet.icone;
             return (

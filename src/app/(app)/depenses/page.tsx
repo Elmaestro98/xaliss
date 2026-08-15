@@ -170,6 +170,9 @@ export default async function DepensesPage({
         date: true,
         supplier: true,
         paymentMethod: true,
+        // Une dépense issue d'une note de frais ne se corrige pas depuis le
+        // journal : la ligne reste alors du texte, sans lien.
+        reportId: true,
         category: { select: { name: true, codeSyscohada: true, color: true } },
         // Un seul suffit : le trombone dit « il y a une pièce », pas combien.
         receipts: { select: { id: true }, take: 1 },
@@ -259,7 +262,7 @@ export default async function DepensesPage({
       */}
       <form
         method="get"
-        className="mt-6 grid gap-3 border border-reglure bg-card p-4 sm:grid-cols-2 lg:grid-cols-3"
+        className="mt-6 grid gap-3 rounded-xl border border-reglure bg-card p-4 sm:grid-cols-2 lg:grid-cols-3"
       >
         <div className="sm:col-span-2 lg:col-span-3">
           <Label htmlFor="q">Recherche</Label>
@@ -370,7 +373,7 @@ export default async function DepensesPage({
       )}
 
       {depenses.length === 0 && !filtresActifs ? (
-        <div className="mt-8 border border-reglure bg-card px-6 py-14 text-center">
+        <div className="mt-8 rounded-xl border border-reglure bg-card px-6 py-14 text-center">
           <p className="titre text-xl">Aucune dépense</p>
           <p className="mx-auto mt-3 max-w-md text-sm text-muted-foreground">
             {peutSaisir
@@ -395,7 +398,7 @@ export default async function DepensesPage({
                 <div className="flex items-baseline justify-between gap-4 pb-2">
                   <h2
                     id={`mois-${cle}`}
-                    className="code-compte uppercase text-muted-foreground"
+                    className="mention"
                   >
                     {capitaliser(formatMois(lignes[0].date))}
                   </h2>
@@ -404,9 +407,23 @@ export default async function DepensesPage({
                   </p>
                 </div>
 
-                <ul className="papier-regle border-y border-reglure bg-card">
+                <ul className="papier-regle overflow-hidden rounded-xl border border-reglure bg-card">
                   {lignes.map((depense) => {
                     const moyen = MOYENS_PAIEMENT[depense.paymentMethod];
+                    // Le libellé porte le lien de correction, plutôt qu'un
+                    // bouton par ligne : le journal reste une colonne de
+                    // lignes de 11 unités, sans commandes qui l'encombrent.
+                    const corrigible = peutSaisir && !depense.reportId;
+                    const libelle = (
+                      <>
+                        {depense.supplier ?? depense.category.name}
+                        {depense.supplier && (
+                          <span className="ml-2 text-muted-foreground">
+                            {depense.category.name}
+                          </span>
+                        )}
+                      </>
+                    );
                     return (
                       <li
                         key={depense.id}
@@ -417,19 +434,23 @@ export default async function DepensesPage({
                         </span>
                         <span
                           aria-hidden
-                          className="size-2.5 shrink-0 rounded-[2px]"
+                          className="size-2.5 shrink-0 rounded-full"
                           style={{
-                            backgroundColor: depense.category.color ?? "#94a3b8",
+                            backgroundColor: depense.category.color ?? "var(--cat-8)",
                           }}
                         />
-                        <span className="min-w-0 flex-1 truncate">
-                          {depense.supplier ?? depense.category.name}
-                          {depense.supplier && (
-                            <span className="ml-2 text-muted-foreground">
-                              {depense.category.name}
-                            </span>
-                          )}
-                        </span>
+                        {corrigible ? (
+                          <Link
+                            href={`/depenses/${depense.id}/modifier`}
+                            className="min-w-0 flex-1 truncate underline-offset-4 hover:underline"
+                          >
+                            {libelle}
+                          </Link>
+                        ) : (
+                          <span className="min-w-0 flex-1 truncate">
+                            {libelle}
+                          </span>
+                        )}
                         <span className="code-compte hidden w-10 shrink-0 text-muted-foreground sm:block">
                           {depense.category.codeSyscohada}
                         </span>

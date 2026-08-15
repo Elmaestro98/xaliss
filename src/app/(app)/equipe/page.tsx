@@ -88,7 +88,7 @@ export default async function EquipePage() {
         Les membres de {session.organizationName} et leurs rôles
       </p>
 
-      <ul className="mt-8 divide-y divide-reglure border border-reglure bg-card">
+      <ul className="mt-8 divide-y divide-reglure overflow-hidden rounded-xl border border-reglure bg-card">
         {membres.map((membre) => (
           <li
             key={membre.userId}

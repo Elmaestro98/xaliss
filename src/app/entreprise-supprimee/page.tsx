@@ -14,7 +14,7 @@ export default async function EntrepriseSupprimeePage() {
 
   return (
     <div className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center px-4 py-16">
-      <p className="code-compte uppercase text-muted-foreground">
+      <p className="mention">
         Entreprise supprimée
       </p>
       <h1 className="titre mt-2 text-2xl">{supprimee.nom}</h1>

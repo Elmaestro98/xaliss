@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button";
 import { FormulaireDepenseNote } from "@/components/formulaire-depense-note";
 import { FormulaireRejet } from "@/components/formulaire-rejet";
 import { formatDate, formatFCFA } from "@/lib/format";
-import { COULEUR_STATUT_NOTE, LIBELLE_STATUT_NOTE } from "@/lib/notes";
+import { LIBELLE_STATUT_NOTE, TON_STATUT_NOTE } from "@/lib/notes";
+import { PastilleStatut } from "@/components/pastille-statut";
+import { ChiffreAffichage } from "@/components/chiffre-affichage";
 import { MOYENS_PAIEMENT } from "@/lib/paiement";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
@@ -95,19 +97,17 @@ export default async function NoteDeFraisPage({
             {note.submittedAt && ` · soumise le ${formatDate(note.submittedAt)}`}
           </p>
         </div>
-        <span
-          className={`shrink-0 text-sm font-medium ${COULEUR_STATUT_NOTE[note.status]}`}
-        >
+        <PastilleStatut ton={TON_STATUT_NOTE[note.status]}>
           {LIBELLE_STATUT_NOTE[note.status]}
-        </span>
+        </PastilleStatut>
       </header>
 
-      <p className="titre chiffre mt-4 text-3xl">
-        {formatFCFA(note.totalAmount)}
-      </p>
+      {/* Le total de la note est le héros de cette page : c'est la somme que
+          l'employé attend, et la seule que le gérant valide. */}
+      <ChiffreAffichage montant={note.totalAmount} className="mt-5" />
 
       {note.status === "REJETEE" && note.rejectionReason && (
-        <div className="mt-4 border border-brique/30 bg-brique/5 px-4 py-3">
+        <div className="mt-4 rounded-xl border border-brique/30 bg-brique/10 px-4 py-3">
           <p className="text-sm font-medium text-brique">Motif du rejet</p>
           <p className="mt-1 text-sm text-foreground">{note.rejectionReason}</p>
         </div>
@@ -115,13 +115,13 @@ export default async function NoteDeFraisPage({
 
       {/* Liste des dépenses de la note */}
       {note.expenses.length > 0 && (
-        <ul className="mt-6 divide-y divide-reglure border border-reglure bg-card">
+        <ul className="mt-6 divide-y divide-reglure overflow-hidden rounded-xl border border-reglure bg-card">
           {note.expenses.map((depense) => (
             <li key={depense.id} className="flex items-center gap-3 px-4 py-3">
               <span
                 aria-hidden
-                className="size-2.5 shrink-0 rounded-[2px]"
-                style={{ backgroundColor: depense.category.color ?? "#94a3b8" }}
+                className="size-2.5 shrink-0 rounded-full"
+                style={{ backgroundColor: depense.category.color ?? "var(--cat-8)" }}
               />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">
@@ -166,7 +166,7 @@ export default async function NoteDeFraisPage({
       )}
 
       {note.expenses.length === 0 && note.status === "BROUILLON" && (
-        <div className="mt-6 border border-dashed border-reglure bg-card px-6 py-8 text-center">
+        <div className="mt-6 rounded-xl border border-dashed border-reglure bg-card px-6 py-8 text-center">
           <p className="text-sm text-muted-foreground">
             Ajoutez une première dépense ci-dessous.
           </p>

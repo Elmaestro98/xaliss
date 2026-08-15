@@ -251,7 +251,7 @@ export function FormulaireDepenseNote({
                   <span className="flex items-center gap-2">
                     <span
                       aria-hidden
-                      className="size-2.5 rounded-[2px]"
+                      className="size-2.5 rounded-full"
                       style={{ backgroundColor: moyen.couleur }}
                     />
                     {moyen.libelle}
@@ -281,8 +281,8 @@ export function FormulaireDepenseNote({
                 <span className="flex items-center gap-2">
                   <span
                     aria-hidden
-                    className="size-2.5 rounded-[2px]"
-                    style={{ backgroundColor: categorie.color ?? "#94a3b8" }}
+                    className="size-2.5 rounded-full"
+                    style={{ backgroundColor: categorie.color ?? "var(--cat-8)" }}
                   />
                   {categorie.name}
                   <span className="code-compte text-muted-foreground">

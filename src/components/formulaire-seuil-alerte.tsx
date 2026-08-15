@@ -18,7 +18,7 @@ export function FormulaireSeuilAlerte({ seuilAlerte }: { seuilAlerte: number }) 
   return (
     <form
       action={action}
-      className="mt-2 border border-reglure bg-card px-5 py-4"
+      className="mt-2 rounded-xl border border-reglure bg-card px-5 py-4"
     >
       <div className="flex flex-wrap items-end gap-4">
         <div>

@@ -1,5 +1,6 @@
 import { OrganizationSwitcher, UserButton } from "@clerk/nextjs";
 import { Toaster } from "@/components/ui/sonner";
+import { BasculeTheme } from "@/components/bascule-theme";
 import { type LienNav, NavLaterale, NavMobile } from "@/components/navigation";
 import { ROLES } from "@/lib/paiement";
 import { can } from "@/lib/permissions";
@@ -38,19 +39,30 @@ export default async function AppLayout({
           },
         ]
       : []),
+    ...(can(role, "subscription:manage")
+      ? [
+          {
+            href: "/abonnement",
+            libelle: "Abonnement",
+            icone: "abonnement" as const,
+          },
+        ]
+      : []),
   ];
 
   return (
     <div className="flex min-h-full flex-1">
       {/* Écrans larges : la couverture sombre du cahier */}
-      <aside className="hidden w-60 shrink-0 flex-col gap-6 bg-sidebar py-5 md:flex">
+      <aside className="hidden w-60 shrink-0 flex-col gap-6 border-r border-sidebar-border bg-sidebar py-5 md:flex">
         <div className="flex flex-col items-start gap-3 px-5">
-          <span className="titre text-xl text-white">Xaalis</span>
+          <span className="titre text-xl text-sidebar-accent-foreground">
+            Xaalis
+          </span>
           {/*
             Styles en ligne plutôt que classes : la barre est sombre et les
             styles internes de Clerk (texte foncé) l'emportent sur une classe
-            utilitaire. Le menu déroulant, lui, s'ouvre sur fond clair et garde
-            ses couleurs par défaut.
+            utilitaire. La variable CSS, elle, suit le thème toute seule —
+            un hexadécimal figé ici resterait gris clair sur le cahier de jour.
           */}
           <OrganizationSwitcher
             hidePersonal
@@ -58,11 +70,13 @@ export default async function AppLayout({
             appearance={{
               elements: {
                 organizationSwitcherTrigger: {
-                  color: "#c3cbdd",
+                  color: "var(--sidebar-foreground)",
                   paddingInline: 0,
                   gap: "0.375rem",
                 },
-                organizationPreviewMainIdentifier: { color: "#c3cbdd" },
+                organizationPreviewMainIdentifier: {
+                  color: "var(--sidebar-foreground)",
+                },
               },
             }}
           />
@@ -72,21 +86,23 @@ export default async function AppLayout({
 
         <div className="mt-auto flex items-center gap-3 border-t border-sidebar-border px-5 pt-4">
           <UserButton />
-          <p className="truncate text-xs text-sidebar-foreground">
+          <p className="min-w-0 flex-1 truncate text-xs text-sidebar-foreground">
             {ROLES[role]}
           </p>
+          <BasculeTheme className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" />
         </div>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Mobile : l'entreprise en haut, la navigation sous le pouce */}
-        <header className="flex items-center justify-between border-b border-reglure bg-card px-4 py-3 md:hidden">
+        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-reglure bg-background/95 px-4 py-3 backdrop-blur-sm md:hidden">
           <span className="titre text-lg">Xaalis</span>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <OrganizationSwitcher
               hidePersonal
               afterSelectOrganizationUrl="/dashboard"
             />
+            <BasculeTheme />
             <UserButton />
           </div>
         </header>

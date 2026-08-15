@@ -28,7 +28,7 @@ export function SelecteurRole({
         defaultValue={role}
         aria-label="Rôle du membre"
         onChange={(evenement) => evenement.currentTarget.form?.requestSubmit()}
-        className="h-9 cursor-pointer rounded-sm border border-reglure bg-card px-2 text-sm focus-visible:border-indigo focus-visible:outline-none"
+        className="h-9 cursor-pointer rounded-lg border border-reglure bg-card px-2 text-sm focus-visible:border-indigo focus-visible:outline-none"
       >
         {OPTIONS.map((option) => (
           <option key={option.valeur} value={option.valeur}>

@@ -3,7 +3,8 @@ import { clerkClient } from "@clerk/nextjs/server";
 import { Plus } from "lucide-react";
 import { FormulaireNote } from "@/components/formulaire-note";
 import { formatDate, formatFCFA } from "@/lib/format";
-import { COULEUR_STATUT_NOTE, LIBELLE_STATUT_NOTE } from "@/lib/notes";
+import { LIBELLE_STATUT_NOTE, TON_STATUT_NOTE } from "@/lib/notes";
+import { PastilleStatut } from "@/components/pastille-statut";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/session";
@@ -56,7 +57,7 @@ export default async function NotesDeFraisPage() {
       </header>
 
       {notes.length > 0 && (
-        <ul className="mt-8 divide-y divide-reglure border border-reglure bg-card">
+        <ul className="mt-8 divide-y divide-reglure overflow-hidden rounded-xl border border-reglure bg-card">
           {notes.map((note) => (
             <li key={note.id}>
               <Link
@@ -75,11 +76,9 @@ export default async function NotesDeFraisPage() {
                 <span className="chiffre shrink-0 text-sm font-medium">
                   {formatFCFA(note.totalAmount)}
                 </span>
-                <span
-                  className={`shrink-0 text-xs font-medium ${COULEUR_STATUT_NOTE[note.status]}`}
-                >
+                <PastilleStatut ton={TON_STATUT_NOTE[note.status]}>
                   {LIBELLE_STATUT_NOTE[note.status]}
-                </span>
+                </PastilleStatut>
               </Link>
             </li>
           ))}
@@ -87,7 +86,7 @@ export default async function NotesDeFraisPage() {
       )}
 
       {notes.length === 0 && (
-        <div className="mt-8 border border-dashed border-reglure bg-card px-6 py-10 text-center">
+        <div className="mt-8 rounded-xl border border-dashed border-reglure bg-card px-6 py-10 text-center">
           <p className="text-sm text-muted-foreground">
             Aucune note de frais. Regroupez vos dépenses avec justificatifs
             dans une note, elle sera validée puis remboursée.

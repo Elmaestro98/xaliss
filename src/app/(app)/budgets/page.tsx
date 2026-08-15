@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FormulaireBudget } from "@/components/formulaire-budget";
+import { PastilleStatut } from "@/components/pastille-statut";
 import { capitaliser, formatFCFA, formatMois } from "@/lib/format";
 import { dansLeJournal } from "@/lib/journal";
 import { lireSeuilAlerte } from "@/lib/parametres";
@@ -87,7 +88,7 @@ export default async function BudgetsPage() {
       </p>
 
       {budgets.length > 0 && (
-        <ul className="mt-8 divide-y divide-reglure border border-reglure bg-card">
+        <ul className="mt-8 divide-y divide-reglure overflow-hidden rounded-xl border border-reglure bg-card">
           {budgets.map((budget, index) => {
             const consomme = consommations[index];
             const pourcentage = Math.round((consomme / budget.amount) * 100);
@@ -105,9 +106,9 @@ export default async function BudgetsPage() {
                 <div className="flex items-center gap-3">
                   <span
                     aria-hidden
-                    className="size-2.5 shrink-0 rounded-[2px]"
+                    className="size-2.5 shrink-0 rounded-full"
                     style={{
-                      backgroundColor: budget.category?.color ?? "#334155",
+                      backgroundColor: budget.category?.color ?? "var(--cat-8)",
                     }}
                   />
                   <p className="min-w-0 flex-1 truncate text-sm font-medium">
@@ -116,15 +117,17 @@ export default async function BudgetsPage() {
                       {LIBELLES_PERIODE[budget.period]}
                     </span>
                   </p>
-                  <span
-                    className={cn(
-                      "chiffre shrink-0 text-sm font-medium",
-                      etat === "depasse" && "text-brique",
-                      etat === "alerte" && "text-ocre",
-                    )}
+                  <PastilleStatut
+                    ton={
+                      etat === "depasse"
+                        ? "brique"
+                        : etat === "alerte"
+                          ? "ocre"
+                          : "vert"
+                    }
                   >
-                    {pourcentage} %
-                  </span>
+                    <span className="chiffre">{pourcentage} %</span>
+                  </PastilleStatut>
                   <form action={supprimerBudget.bind(null, budget.id)}>
                     <Button
                       type="submit"
@@ -138,19 +141,26 @@ export default async function BudgetsPage() {
                   </form>
                 </div>
 
-                {/* La jauge : bornée à 100 % visuellement, le texte dit le
-                    vrai dépassement — une barre qui déborde ne mesure plus. */}
+                {/*
+                  La jauge : bornée à 100 % visuellement, le texte dit le
+                  vrai dépassement — une barre qui déborde ne mesure plus.
+
+                  Le reste à dépenser est RÉGLÉ, pas grisé : c'est du budget
+                  encore disponible, pas une absence. La métaphore tient jusque
+                  dans le détail — la ligne du cahier attend qu'on écrive
+                  dessus.
+                */}
                 <div
                   role="progressbar"
                   aria-valuenow={Math.min(pourcentage, 100)}
                   aria-valuemin={0}
                   aria-valuemax={100}
                   aria-label={`${budget.category?.name ?? "Budget global"} : ${formatFCFA(consomme)} sur ${formatFCFA(budget.amount)}`}
-                  className="mt-3 h-2.5 w-full overflow-hidden rounded-sm border border-reglure bg-background"
+                  className="regle-texture mt-3 h-3 w-full overflow-hidden rounded-full border border-reglure"
                 >
                   <div
                     className={cn(
-                      "h-full transition-[width]",
+                      "h-full rounded-full transition-[width]",
                       etat === "depasse" && "bg-brique",
                       etat === "alerte" && "bg-ocre",
                       etat === "normal" && "bg-indigo",
@@ -182,7 +192,7 @@ export default async function BudgetsPage() {
       )}
 
       {budgets.length === 0 && (
-        <div className="mt-8 border border-dashed border-reglure bg-card px-6 py-10 text-center">
+        <div className="mt-8 rounded-xl border border-dashed border-reglure bg-card px-6 py-10 text-center">
           <p className="text-sm text-muted-foreground">
             Aucun budget défini. Créez le premier ci-dessous : la jauge se
             remplira au fil des dépenses.

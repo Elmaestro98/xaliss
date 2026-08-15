@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { useActionState } from "react";
 import Link from "next/link";
-import { Loader2, ScanLine } from "lucide-react";
+import { Loader2, Paperclip, ScanLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,14 +14,36 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { creerDepense, type EtatFormulaire } from "@/app/(app)/depenses/actions";
+import {
+  creerDepense,
+  modifierDepense,
+  type EtatFormulaire,
+} from "@/app/(app)/depenses/actions";
 import { MOYENS_PAIEMENT } from "@/lib/paiement";
+import { PaymentMethod } from "@/generated/prisma/enums";
 
 type Categorie = {
   id: string;
   name: string;
   codeSyscohada: string | null;
   color: string | null;
+};
+
+/**
+ * La dépense à corriger, absente en saisie. Le même formulaire sert aux deux
+ * gestes : une correction se fait sur le même écran que la saisie, sinon on
+ * entretient deux versions du même formulaire qui divergent au premier ajout
+ * de champ.
+ */
+export type DepenseAModifier = {
+  id: string;
+  amount: number;
+  date: string; // aaaa-mm-jj, déjà formatée côté serveur
+  categoryId: string;
+  paymentMethod: PaymentMethod;
+  supplier: string | null;
+  description: string | null;
+  aUnJustificatif: boolean;
 };
 
 /** Réponse de /api/ocr — voir lib/ocr.ts pour le schéma complet. */
@@ -49,9 +71,18 @@ function Erreur({ messages }: { messages?: string[] }) {
   );
 }
 
-export function FormulaireDepense({ categories }: { categories: Categorie[] }) {
+export function FormulaireDepense({
+  categories,
+  depense,
+}: {
+  categories: Categorie[];
+  depense?: DepenseAModifier;
+}) {
+  const modification = depense !== undefined;
   const [etat, action, enCours] = useActionState<EtatFormulaire, FormData>(
-    creerDepense,
+    // bind fige l'identifiant côté serveur : il ne transite pas par un champ
+    // du formulaire, où il serait remplaçable depuis la console.
+    depense ? modifierDepense.bind(null, depense.id) : creerDepense,
     {},
   );
 
@@ -59,10 +90,12 @@ export function FormulaireDepense({ categories }: { categories: Categorie[] }) {
 
   // Champs contrôlés : l'OCR doit pouvoir écrire dedans après coup — un
   // simple defaultValue serait figé au premier rendu.
-  const [montant, setMontant] = useState("");
-  const [date, setDate] = useState(aujourdhui);
-  const [categorieId, setCategorieId] = useState("");
-  const [fournisseur, setFournisseur] = useState("");
+  const [montant, setMontant] = useState(
+    depense ? String(depense.amount) : "",
+  );
+  const [date, setDate] = useState(depense?.date ?? aujourdhui);
+  const [categorieId, setCategorieId] = useState(depense?.categoryId ?? "");
+  const [fournisseur, setFournisseur] = useState(depense?.supplier ?? "");
   const [ocr, setOcr] = useState<EtatOcr>({ statut: "inactif" });
   // Compteur de requêtes : si l'utilisateur change de fichier pendant une
   // analyse, seule la réponse de la DERNIÈRE compte.
@@ -129,6 +162,33 @@ export function FormulaireDepense({ categories }: { categories: Categorie[] }) {
       */}
       <div>
         <Label htmlFor="justificatif">Justificatif</Label>
+
+        {/*
+          En modification, la pièce déjà jointe s'ouvre avant d'être remplacée :
+          on ne décide pas de changer un reçu qu'on ne peut pas relire.
+        */}
+        {depense?.aUnJustificatif && (
+          <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+            <a
+              href={`/depenses/${depense.id}/justificatif`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-indigo underline underline-offset-4"
+            >
+              <Paperclip className="size-3.5" aria-hidden />
+              Voir le justificatif actuel
+            </a>
+            <label className="inline-flex items-center gap-1.5 text-muted-foreground">
+              <input
+                type="checkbox"
+                name="retirerJustificatif"
+                className="size-3.5 accent-brique"
+              />
+              Le retirer
+            </label>
+          </p>
+        )}
+
         <Input
           id="justificatif"
           name="justificatif"
@@ -145,7 +205,9 @@ export function FormulaireDepense({ categories }: { categories: Categorie[] }) {
           id="aide-justificatif"
           className="mt-1.5 text-xs text-muted-foreground"
         >
-          Photo du reçu ou PDF, 10 Mo maximum. Facultatif.
+          {depense?.aUnJustificatif
+            ? "Déposer un fichier remplace le justificatif actuel. Photo ou PDF, 10 Mo maximum."
+            : "Photo du reçu ou PDF, 10 Mo maximum. Facultatif."}
         </p>
 
         {ocr.statut === "analyse" && (
@@ -217,7 +279,11 @@ export function FormulaireDepense({ categories }: { categories: Categorie[] }) {
 
         <div>
           <Label htmlFor="paymentMethod">Payé par</Label>
-          <Select name="paymentMethod" required>
+          <Select
+            name="paymentMethod"
+            required
+            defaultValue={depense?.paymentMethod}
+          >
             <SelectTrigger id="paymentMethod" className="mt-1.5 w-full">
               <SelectValue placeholder="Choisir" />
             </SelectTrigger>
@@ -227,7 +293,7 @@ export function FormulaireDepense({ categories }: { categories: Categorie[] }) {
                   <span className="flex items-center gap-2">
                     <span
                       aria-hidden
-                      className="size-2.5 rounded-[2px]"
+                      className="size-2.5 rounded-full"
                       style={{ backgroundColor: moyen.couleur }}
                     />
                     {moyen.libelle}
@@ -257,8 +323,8 @@ export function FormulaireDepense({ categories }: { categories: Categorie[] }) {
                 <span className="flex items-center gap-2">
                   <span
                     aria-hidden
-                    className="size-2.5 rounded-[2px]"
-                    style={{ backgroundColor: categorie.color ?? "#94a3b8" }}
+                    className="size-2.5 rounded-full"
+                    style={{ backgroundColor: categorie.color ?? "var(--cat-8)" }}
                   />
                   {categorie.name}
                   <span className="code-compte text-muted-foreground">
@@ -292,6 +358,7 @@ export function FormulaireDepense({ categories }: { categories: Categorie[] }) {
           name="description"
           className="mt-1.5"
           placeholder="À quoi correspond cette dépense ?"
+          defaultValue={depense?.description ?? ""}
         />
         <Erreur messages={etat.erreurs?.description} />
       </div>
@@ -317,7 +384,11 @@ export function FormulaireDepense({ categories }: { categories: Categorie[] }) {
 
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={enCours || ocr.statut === "analyse"}>
-          {enCours ? "Enregistrement…" : "Enregistrer la dépense"}
+          {enCours
+            ? "Enregistrement…"
+            : modification
+              ? "Enregistrer les modifications"
+              : "Enregistrer la dépense"}
         </Button>
         <Button variant="ghost" asChild>
           <Link href="/depenses">Annuler</Link>

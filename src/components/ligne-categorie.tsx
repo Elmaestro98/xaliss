@@ -48,7 +48,7 @@ export function LigneCategorie({ categorie }: { categorie: Categorie }) {
             name="color"
             defaultValue={categorie.color ?? "#64748b"}
             aria-label="Couleur"
-            className="size-8 shrink-0 cursor-pointer rounded-[3px] border border-reglure bg-card p-0.5"
+            className="size-8 shrink-0 cursor-pointer rounded-[3px] rounded-xl border border-reglure bg-card p-0.5"
           />
           <Input
             name="name"
@@ -106,7 +106,7 @@ export function LigneCategorie({ categorie }: { categorie: Categorie }) {
       <span
         aria-hidden
         className="size-3 shrink-0 rounded-[3px]"
-        style={{ backgroundColor: categorie.color ?? "#94a3b8" }}
+        style={{ backgroundColor: categorie.color ?? "var(--cat-8)" }}
       />
       <span className="code-compte w-12 shrink-0 text-muted-foreground">
         {categorie.codeSyscohada ?? "—"}

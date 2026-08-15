@@ -14,7 +14,7 @@ Ce fichier est la **source de vérité** du projet. Toute décision fonctionnell
 
 **Problème résolu** : la majorité des PME gèrent leurs dépenses sur papier ou Excel → reçus perdus, dépassements de budget non détectés, fraudes difficiles à tracer, bilans laborieux.
 
-**Positionnement** : alternative locale et abordable aux solutions internationales (Expensify, Spendesk) — tarifs en FCFA, paiement Wave/Orange Money, interface mobile-first en français, catégories alignées SYSCOHADA.
+**Positionnement** : alternative locale et abordable aux solutions internationales (Expensify, Spendesk) — tarifs en FCFA, abonnement payable par Wave (pas de carte bancaire exigée), interface mobile-first en français, catégories alignées SYSCOHADA.
 
 ---
 
@@ -76,7 +76,7 @@ Ce fichier est la **source de vérité** du projet. Toute décision fonctionnell
 
 - Utilisateurs : invitation email, rôles, désactivation
 - Paramètres : logo, seuils d'alerte, catégories
-- Abonnement : choix du plan, paiement Wave/OM/carte, factures
+- Abonnement : choix du plan (mensuel ou annuel), paiement Wave, factures
 
 ### ❌ Hors périmètre V1 (→ V2)
 
@@ -90,6 +90,7 @@ App mobile native, gestion des revenus/trésorerie, multi-devises, multi-succurs
 | --------------------------- | :------------: | :-------: | :---------------: |
 | Voir toutes les dépenses    |       ✅       |    ✅     |   Ses dépenses    |
 | Créer/modifier une dépense  |       ✅       |    ✅     | Via note de frais |
+| Supprimer une dépense       |       ✅       |    ✅     |        ❌         |
 | Gérer catégories & budgets  |       ✅       |    ✅     |        ❌         |
 | Soumettre une note de frais |       ✅       |    ✅     |        ✅         |
 | Approuver/rejeter une note  |       ✅       |    ❌     |        ❌         |
@@ -114,7 +115,7 @@ App mobile native, gestion des revenus/trésorerie, multi-devises, multi-succurs
 - **API Gemini (Google)** — OCR vision des reçus (palier gratuit)
 - **Resend** — emails transactionnels
 - **API Orange SMS** — alertes SMS
-- **Wave Business + Orange Money** — paiement des abonnements (webhooks)
+- **Wave Business** — paiement des abonnements (checkout + webhook signé)
 - **exceljs / pdf-lib** — exports
 - **Vercel** — hébergement, CI/CD
 
@@ -124,6 +125,15 @@ App mobile native, gestion des revenus/trésorerie, multi-devises, multi-succurs
 # Supabase : POOLER obligatoire en serverless
 DATABASE_URL="...pooler.supabase.com:6543/postgres?pgbouncer=true"
 DIRECT_URL="...supabase.com:5432/postgres"
+
+# Paiements Wave — lien de paiement du portefeuille marchand, à montant libre.
+# Absente : la souscription échoue franchement (il n'y a plus de simulation).
+WAVE_PAYMENT_LINK="https://pay.wave.com/m/..."
+
+# Validation manuelle des paiements (/api/admin/paiements + scripts/valider-paiement.ts).
+# DISTINCT de CRON_SECRET : un secret déposé chez Vercel pour déclencher des
+# tâches n'a pas à ouvrir l'encaissement.
+ADMIN_SECRET="..."
 ```
 
 - Middleware Clerk dans **`src/proxy.ts`** (pas `middleware.ts`)
@@ -161,15 +171,107 @@ DIRECT_URL="...supabase.com:5432/postgres"
   active et renvoie aussitôt vers `/dashboard`. La page `/entreprise-supprimee` vit
   donc hors du groupe `(app)`, dont le layout appelle `requireSession()`.
 
-### Direction visuelle (phase 3)
+### Décisions d'architecture (phase 7)
+
+- **Un seul abonnement courant par entreprise** (`Subscription.organizationId @unique`).
+  Garder un historique dans cette table obligerait chaque lecture à deviner quelle
+  ligne fait foi. L'historique, c'est `Payment` — une ligne par tentative, qui sert à
+  la fois de trace technique et de facture.
+- **Wave est le seul prestataire d'abonnement en V1**, et Xaalis n'appelle pas son
+  API : l'entreprise paie sur un **lien de paiement** du portefeuille marchand.
+  Orange Money exige un compte marchand validé (KYA) et ne publie pas son contrat
+  Sénégal. Reporté en V2.
+  **Ne pas confondre avec `PaymentMethod.ORANGE_MONEY`** : celui-là décrit comment une
+  PME règle *ses fournisseurs*, reste pleinement pris en charge, et n'a rien à voir
+  avec la façon dont elle paie Xaalis (`PaymentProvider`).
+- **Un lien de paiement ne transporte aucune référence** — c'est le fait qui gouverne
+  tout le reste. Wave ne peut pas dire à Xaalis *quelle* entreprise vient de payer
+  *quoi* : il n'y a donc **ni webhook, ni activation automatique**. L'encaissement est
+  un geste humain, et l'architecture doit l'assumer plutôt que la maquiller.
+- **Trois temps qu'il faut garder distincts** (`lib/facturation.ts`) :
+  `lancerPaiement` note ce qui est attendu, `declarerPaiement` enregistre ce que le
+  client affirme, `encaisserPaiement` active. Seul le troisième donne accès à quoi que
+  ce soit — **un client qui clique n'est pas un client qui a payé**. D'où le statut
+  `AWAITING_VERIFICATION` : le confondre avec `SUCCEEDED` offrirait un plan Business à
+  qui sait taper une suite de caractères.
+- **L'inaccessibilité remplace la signature.** L'activation passe par
+  `/api/admin/paiements`, protégée par `ADMIN_SECRET` et appelée seulement par
+  `scripts/valider-paiement.ts` — jamais depuis le web. Là où la signature HMAC
+  prouvait l'origine d'un webhook, c'est désormais le fait qu'aucune requête publique
+  ne mène à l'encaissement.
+- **La route, pas le script, encaisse.** Le script est une façade : il n'écrit rien en
+  base. Refaire l'activation en ligne de commande créerait un second chemin
+  d'encaissement, et c'est toujours celui qu'on ne teste pas qui casse.
+- **Le montant n'est jamais reçu du client** : il est calculé depuis `lib/plans.ts` à
+  la création du paiement, affiché en grand sur l'écran de paiement (le lien Wave est à
+  montant libre), et l'éditeur peut le **confronter** à ce qu'il constate au moment de
+  valider. Un écart enregistre l'échec sans activer.
+- **La référence sert de motif de versement.** C'est le seul fil entre un virement reçu
+  sur le portefeuille marchand et l'entreprise qui l'a émis — d'où son alphabet sans
+  `I`, `O`, `0` ni `1` : elle se dicte au téléphone.
+- **Le quota OCR compte les appels, pas les reçus conservés** (table `OcrUsage`).
+  C'est le coût de l'appel à Gemini que le quota protège ; quelqu'un qui scanne sans
+  enregistrer le consomme quand même. Le compteur n'est posé qu'**après** un appel
+  réussi : une panne de Gemini n'ampute pas le quota du client.
+- **Un impayé ferme la saisie, jamais le registre.** Échéance dépassée → `PAST_DUE` et
+  7 jours de grâce (accès complet), puis `SUSPENDED` = lecture seule. Les données
+  restent consultables et **exportables en PDF** indéfiniment. Même principe que la
+  suppression d'entreprise : la comptabilité d'une PME lui appartient, on ne la retient
+  pas en otage.
+- **Plus de mode simulation.** Il n'a plus d'objet : le parcours ne dépend plus de clés
+  d'API, et le seul point d'activation est déjà hors du web. Sans lien configuré, la
+  souscription échoue franchement plutôt que de faire semblant.
+- **Reporter la limite de sièges sur Clerk relit avant d'écrire.** Mettre à jour
+  l'organisation fait émettre à Clerk un `organization.updated`, que notre webhook
+  traite en rappelant la même fonction : sans comparaison préalable, les deux se
+  relanceraient indéfiniment.
+
+### Décisions d'architecture (phase 3)
+
+- **Une dépense issue d'une note de frais ne se corrige pas depuis le journal.**
+  Elle est passée par l'approbation d'un gérant (§8) : la retoucher ensuite
+  réécrirait après coup une décision validée. Tant que la note est en
+  `BROUILLON`, son auteur la corrige depuis la note ; une fois remboursée, elle
+  est figée et le journal n'en propose ni lien de modification ni suppression.
+- **La suppression est ouverte au COMPTABLE, pas réservée au gérant.** Sans
+  cela, une saisie erronée obligerait à écrire une contre-dépense pour
+  l'annuler : un journal faussé par une permission trop étroite. Le garde-fou
+  n'est pas le rôle mais la trace — `AuditLog` conserve le contenu intégral de
+  la dépense effacée, ce que la ligne supprimée ne fait plus.
+- **La modification ne consomme pas de quota**, contrairement à la saisie :
+  corriger n'ajoute pas de dépense. Une entreprise au plafond de son plan doit
+  pouvoir réparer une faute de frappe — sinon la limite tarifaire empêcherait
+  de rendre le journal exact.
+- **Une alerte budget se déclenche sur le delta, pas sur le nouveau montant.**
+  Passer 10 000 à 12 000 ajoute 2 000 à la jauge. Si la catégorie ou la date
+  change, la dépense entre dans une jauge où elle n'était pas comptée : elle y
+  pèse alors son montant entier.
+- **L'ordre bucket/base est le même qu'à la création, en miroir** : le nouveau
+  fichier monte avant l'écriture (un échec l'efface), et l'ancien n'est
+  supprimé qu'**après** le commit — l'inverse laisserait une dépense pointant
+  vers un fichier disparu si la transaction échouait.
+
+### Direction visuelle — « le cahier, la nuit » (refondue phase 8)
 
 **Le cahier.** Xaalis remplace le registre papier des PME : l'interface en emprunte la
 structure, pas son apparence. Positionnement oblige (« alternative locale » à
 Expensify/Spendesk), un tableau de bord SaaS gris standard serait un contresens.
 
-- **Palette** (`globals.css`) : `papier` (blanc froid de papier réglé), `reglure`
-  (le bleu des lignes → bordures), `encre`, `indigo` (marque : teinture indigo),
+**La nuit.** Le thème par défaut est sombre. Ce n'est pas « un dashboard sombre de
+plus » : la boutique ferme, la comptabilité reste, et c'est le même cahier réglé vu
+sous la lampe. Les deux thèmes existent — le clair reste indispensable, un employé qui
+photographie un reçu dehors en plein soleil ne lit pas un écran noir.
+
+- **Palette** (`globals.css`), quatre surfaces et une encre :
+  `papier` (le fond), `feuille` (la carte), `pose` (une surface posée sur la carte),
+  `reglure` (les filets), `encre` / `encre-pale` (le texte), `indigo` (la marque),
   `vert` / `ocre` / `brique` (sous budget / seuil 80 % / dépassement).
+- **Le fond n'est pas gris.** `#0B0D12` est un bleu-noir (teinte ~226°), la couleur de
+  l'indigo à pleine profondeur. Le noir neutre `#0A0A0A` est le réglage par défaut de
+  tout le monde ; celui-ci est celui de Xaalis.
+- **Aucune ombre portée, nulle part.** Une ombre suppose une source de lumière, et un
+  cahier n'en a pas. Une feuille se détache par son **ton** (un cran au-dessus du fond)
+  et son **filet de 1px**. Accessoirement, une ombre noire sur fond noir ne se voit pas.
 - **Règle de couleur** : Wave (cyan) et Orange Money (orange) sont des **données**
   (enum `PaymentMethod`), pas du décor. Le décor reste sobre pour les laisser parler :
   la marque n'est ni cyan ni orange. **Corollaire** : dans une liste, la couleur
@@ -178,16 +280,59 @@ Expensify/Spendesk), un tableau de bord SaaS gris standard serait un contresens.
 - **Typographie** : **une seule famille**, Archivo variable. Le contraste titre/texte
   vient de son **axe de largeur** (`.titre`, `font-stretch: 118%`), pas d'une seconde
   police — mobile-first au Sénégal signifie ne pas imposer trois familles à un forfait
-  data. IBM Plex Mono uniquement pour les codes SYSCOHADA (`.code-compte`).
+  data. IBM Plex Mono uniquement pour les codes SYSCOHADA (`.code-compte`) et les
+  en-têtes de colonne (`.mention`, les petites capitales du registre).
 - **Structure** : les codes SYSCOHADA (601, 6053, 622…) sont de vrais numéros de compte
   et servent de numérotation. Pas de faux marqueurs 01/02/03.
-- **La réglure** (`.papier-regle`) n'est utilisée que là où des rangées se posent
-  réellement dessus (listes, légendes) — pas de réglure décorative sur un écran vide.
-- **Montants** : `.chiffre` (chiffres tabulaires) + `formatFCFA()` (`lib/format.ts`).
+- **Montants** : `.chiffre` (chiffres tabulaires) partout, et `.chiffre-affichage` pour
+  **un seul** montant héros par écran — celui qui répond à la question qu'on se pose en
+  ouvrant la page. `formatFCFA()` / `formatNombre()` dans `lib/format.ts`.
+- **Rayon 0.75rem.** L'ancienne règle (« un registre est équerré », rayon 0.25rem) est
+  abandonnée : un coin vif scintille sur fond sombre, et le produit doit rester tenable
+  au pouce.
+
+#### La signature : la réglure est aussi la texture
+
+Le même trait sert à deux échelles, et c'est ce qui distingue Xaalis de n'importe quel
+autre tableau de bord :
+
+- **Pas 2,75rem — structure** (`.papier-regle`). Les rangées se posent réellement
+  dessus : c'est la hauteur de ligne du registre. Jamais de réglure décorative sur un
+  écran vide.
+- **Pas 0,375rem — texture** (`.regle-texture` en CSS, `MotifReglure` en SVG pour
+  recharts). Remplit **ce qui n'est pas le sujet**. Une donnée secondaire n'est pas
+  grisée, elle est **réglée** : elle reste du papier, elle n'est simplement pas encore
+  écrite. Trois applications, toutes sémantiques :
+  - graphe d'évolution : les mois passés sont réglés, le mois courant est à l'encre ;
+  - jauges de budget et de quota : le **reste à dépenser** est réglé, pas grisé ;
+  - bande de répartition : le reliquat « autres catégories » est réglé, pas coloré.
+
+#### Deux écarts assumés par rapport à la maquette de référence
+
+- **La barre latérale garde ses libellés**, contre l'usage du rail d'icônes seules.
+  Xaalis n'est pas un outil qu'on ouvre huit heures par jour : un chauffeur y passe deux
+  minutes par semaine et n'aura jamais appris qu'un portefeuille signifie « notes de
+  frais ». Une icône seule est un raccourci pour les habitués, payé par les autres.
+- **Pas d'étiquette de montant dans les barres du graphe.** En FCFA un mois s'écrit
+  « 1 250 000 » : sept caractères qui ne tiennent pas dans une barre de téléphone. Le
+  total exact est déjà en grand au-dessus, et chaque mois se lit au toucher.
+
+#### Vocabulaire des statuts
+
+Cinq tons, un sens chacun, partout identiques (`components/pastille-statut.tsx`) :
+`neutre` (rien d'engagé) · `indigo` (en cours) · `ocre` (accepté mais pas soldé, ou
+seuil d'alerte) · `vert` (soldé, sous budget) · `brique` (refusé, impayé, dépassement).
+Le statut s'écrit **toujours en toutes lettres**, la couleur ne fait que le confirmer —
+sans quoi il disparaîtrait pour un daltonien et sur un export imprimé en noir et blanc.
+
+⚠️ **Le sens des couleurs est inversé par rapport à un tableau de bord de chiffre
+d'affaires.** Ici on compte des **dépenses** : une hausse est un signal rouge, une
+baisse est verte. Reprendre le réflexe « hausse = vert » féliciterait le gérant pour un
+dérapage budgétaire.
 
 ---
 
-## 7. Modèle de données (11 tables)
+## 7. Modèle de données (13 tables)
 
 ```prisma
 Organization      // Tenant : name, logo, currency, settings, plan
@@ -200,7 +345,11 @@ RecurringExpense  // template (Json), frequency, nextRunAt
 Budget            // categoryId?, amount, period (MONTHLY|QUARTERLY), alertThresholds
 ExpenseReport     // employeeId, title, status (workflow), totalAmount, submittedAt
 Approval          // reportId, actorId, action, comment, createdAt
-Subscription      // plan, status, provider (WAVE|ORANGE_MONEY|STRIPE), currentPeriodEnd
+Subscription      // plan, status, billingCycle, provider, currentPeriodEnd, graceEndsAt
+                  // organizationId @unique : un seul abonnement courant par entreprise
+Payment           // reference (= n° de facture ET motif du versement Wave), provider,
+                  // plan, amount, status, providerTransactionId (déclaré par le client)
+OcrUsage          // organizationId, userId, createdAt — compteur du quota OCR mensuel
 AuditLog          // actorId, entity, action, metadata (Json), createdAt
 ```
 
@@ -242,9 +391,22 @@ Chaque transition crée une ligne `Approval` + une ligne `AuditLog`.
 
 ### Paiements abonnement
 
-- Checkout Wave Business / Orange Money → webhooks `/api/webhooks/wave` et `/api/webhooks/orange-money`
-- Webhook confirme → `Subscription.status = ACTIVE`, période mise à jour
+Paiement par **lien Wave à montant libre**, encaissement validé à la main :
+
+1. Le gérant choisit un plan → `Payment` créé en `PENDING`, référence `XAA-2026-…`
+2. `/abonnement/paiement/[reference]` dicte le **montant exact** et la **référence à
+   mettre en motif**, puis ouvre le lien Wave
+3. Il paie dans Wave, revient, recopie l'identifiant de son reçu → `AWAITING_VERIFICATION`
+4. L'éditeur retrouve le versement sur Wave Business, puis valide :
+   `npx tsx scripts/valider-paiement.ts liste | valider <réf> [montant] | rejeter <réf>`
+5. `Subscription.status = ACTIVE`, période prolongée (un renouvellement anticipé
+   **ajoute** à l'échéance en cours au lieu de la remplacer)
+
 - Échec de renouvellement → délai de grâce 7 jours → suspension (lecture seule)
+- Orange Money : hors périmètre V1 (voir §13)
+- ⚠️ Aucune activation automatique : un paiement non validé laisse l'entreprise sur son
+  essai ou son plan précédent. Relever les déclarations en attente fait partie de
+  l'exploitation quotidienne.
 
 ### Notifications
 
@@ -284,22 +446,52 @@ Chaque transition crée une ligne `Approval` + une ligne `AuditLog`.
 | Exports                 | PDF         | Excel + PDF      | Excel + PDF              |
 | Support                 | Email       | Email + WhatsApp | Prioritaire + onboarding |
 
-Essai gratuit **14 jours** • Paiement annuel : **2 mois offerts** • Les limites de plan sont vérifiées côté serveur (`lib/permissions.ts`).
+Essai gratuit **14 jours** • Paiement annuel : **2 mois offerts** • Les limites de plan sont vérifiées côté serveur.
+
+**Où vivent ces règles** : le catalogue (tarifs, quotas, fonctionnalités) est dans
+`lib/plans.ts`, les compteurs mensuels dans `lib/quotas.ts`. À ne pas confondre avec
+`lib/permissions.ts`, qui répond à une autre question : celui-ci dit « ce **rôle** en
+a-t-il le droit ? », ceux-là « l'entreprise a-t-elle **payé** pour ça ? ». Les deux
+contrôles se cumulent — un ADMIN en plan Starter n'ouvre pas de note de frais, et un
+EMPLOYE en plan Business n'approuve toujours rien.
+
+La limite d'**utilisateurs** fait exception : elle est reportée sur Clerk
+(`maxAllowedMemberships`), parce que c'est son interface qui émet les invitations.
+Vérifiée seulement chez nous, elle ne serait qu'un affichage.
 
 ---
 
 ## 12. Plan de développement (13 semaines)
 
-| Phase | Contenu                                                        | Durée   | Statut                                                                                                                                                                                                    |
-| ----- | -------------------------------------------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1     | Setup : Next.js, Prisma, Supabase, Clerk Orgs, RLS, Vercel     | 1 sem   | 🟡 Next.js + Prisma + Supabase (11 tables migrées) + Clerk Orgs faits — **reste : RLS, Vercel**                                                                                                           |
-| 2     | Auth, onboarding entreprise, utilisateurs & rôles              | 1,5 sem | 🟡 Connexion, onboarding entreprise, synchro Clerk→base, catégories SYSCOHADA, matrice de permissions faits — **reste : invitations + écran de gestion des rôles**                                        |
-| 3     | Module Dépenses : CRUD, catégories, justificatifs, récurrences | 2 sem   | 🟡 Système visuel + shadcn/ui, coque de l'app (navigation filtrée par rôle), saisie + journal des dépenses faits — **reste : modification/suppression, justificatifs, récurrences, filtres & pagination** |
-| 4     | OCR + Budgets & alertes email                                  | 2 sem   | ⬜                                                                                                                                                                                                        |
-| 5     | Notes de frais : workflow + notifications email/SMS            | 2 sem   | ⬜                                                                                                                                                                                                        |
-| 6     | Dashboard, rapports, exports Excel/PDF                         | 1,5 sem | ⬜                                                                                                                                                                                                        |
-| 7     | Abonnements Wave/OM, webhooks, facturation                     | 1,5 sem | ⬜                                                                                                                                                                                                        |
-| 8     | Landing page, tests, audit sécurité, production 🚀             | 1,5 sem | ⬜                                                                                                                                                                                                        |
+> **Point d'arrêt** — dernier travail : **refonte de la direction visuelle**
+> (14 août 2026). Passage de « le cahier » clair à « **le cahier, la nuit** » :
+> thème sombre par défaut avec bascule clair, jetons refondus, rayon 0,75rem,
+> réglure promue en texture sémantique, pastilles de statut, montant héros.
+> Voir §6 — la §6 précédente décrivait le cahier clair et justifiait le rayon
+> nul, elle a été réécrite. La **landing page** a suivi dans la foulée
+> (`src/app/page.tsx`) : sa grille tarifaire est lue dans `lib/plans.ts` et
+> n'est jamais recopiée, pour qu'une page publique ne puisse pas annoncer un
+> prix que l'application ne pratique pas.
+> Avant cela : bascule de l'API Wave Checkout vers un **lien de paiement Wave**,
+> migration `20260814090000_paiement_lien_wave` appliquée — l'API, le webhook
+> signé et le mode simulation supprimés, l'activation est manuelle.
+> Les phases 2, 3, 4, 6 et 7 sont faites. Deux dettes traînent derrière :
+> **RLS** (phase 1) et **SMS** (phase 5).
+>
+> ⚠️ Rien n'est encore déployé, et **toute la phase 7 plus la refonte visuelle
+> ne sont pas commitées**. Le dépôt en est à deux commits (`846a8e1 okprojet`),
+> qui ne contiennent ni les abonnements ni le nouveau système visuel.
+
+| Phase | Contenu                                                        | Durée   | Statut                                                                                                                                                                                                       |
+| ----- | -------------------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1     | Setup : Next.js, Prisma, Supabase, Clerk Orgs, RLS, Vercel     | 1 sem   | 🟡 Next.js 16 + Prisma 7 + Supabase (11 tables, 2 migrations) + Clerk Orgs faits — **reste : RLS (aucune policy écrite), déploiement Vercel** (`vercel.json` et ses 2 crons sont prêts)                       |
+| 2     | Auth, onboarding entreprise, utilisateurs & rôles              | 1,5 sem | ✅ Connexion, onboarding entreprise, synchro Clerk→base, catégories SYSCOHADA, matrice de permissions, écran d'équipe (changer de rôle, retirer un membre). Les invitations restent déléguées à l'UI Clerk.  |
+| 3     | Module Dépenses : CRUD, catégories, justificatifs, récurrences | 2 sem   | ✅ Système visuel + shadcn/ui, coque de l'app, saisie, journal, justificatifs (Storage + URLs signées), récurrences (+ cron), filtres & pagination, modification et suppression d'une dépense (audit complet) |
+| 4     | OCR + Budgets & alertes email                                  | 2 sem   | ✅ OCR Gemini (`/api/ocr`), budgets par catégorie ou globaux, jauges, seuils configurables, alertes email Resend                                                                                              |
+| 5     | Notes de frais : workflow + notifications email/SMS            | 2 sem   | 🟡 Workflow complet (soumettre, approuver, rejeter avec motif, corriger, rembourser), `Approval` + `AuditLog`, entrée au journal au remboursement, notifications **email** — **reste : les SMS (Orange)**     |
+| 6     | Dashboard, rapports, exports Excel/PDF                         | 1,5 sem | ✅ Dashboard (total du mois, évolution vs M-1, top catégories, notes en attente), graphiques recharts, exports journal (Excel), synthèse et notes de frais (PDF)                                              |
+| 7     | Abonnements Wave, facturation                                  | 1,5 sem | ✅ Essai 14 jours, plans et quotas vérifiés côté serveur, page Abonnement + factures, paiement par **lien Wave** (déclaration du client puis validation manuelle de l'éditeur), cron d'échéance et suspension en lecture seule. Orange Money et l'API Checkout reportés en V2. |
+| 8     | Landing page, tests, audit sécurité, production 🚀             | 1,5 sem | 🟡 Direction visuelle « le cahier, la nuit » appliquée à toute l'application (§6) + **landing page** (héros, constats, 4 modules, ancrage local, grille tarifaire lue dans `lib/plans.ts`, pied de page) — **reste : les tests, l'audit sécurité et la mise en production** |
 
 **Bêta** : 5–10 PME pilotes (Saint-Louis / Dakar) dès la phase 6.
 
@@ -313,6 +505,10 @@ Essai gratuit **14 jours** • Paiement annuel : **2 mois offerts** • Les limi
 - Rôle « Cabinet comptable » multi-entreprises
 - Assistant IA en langage naturel (« Combien en carburant ce trimestre ? »)
 - Agrégation bancaire / Wave Business
+- **Encaissement automatique par l'API Wave Checkout** (session + webhook signé) :
+  supprime la validation manuelle, mais exige des clés marchand Wave
+- **Orange Money comme second prestataire d'abonnement** (nécessite un compte
+  marchand validé KYA et la doc Orange Sonatel)
 - Interface en wolof
 
 ---

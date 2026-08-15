@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { clerkClient } from "@clerk/nextjs/server";
-import { ArrowDownRight, ArrowUpRight, Plus } from "lucide-react";
+import { ArrowRight, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BandeRepartition } from "@/components/bande-repartition";
+import { ChiffreAffichage } from "@/components/chiffre-affichage";
+import { Feuille } from "@/components/feuille";
 import { GrapheBarres } from "@/components/graphe-barres";
 import { GrapheEvolution } from "@/components/graphe-evolution";
 import { GrapheMoyens } from "@/components/graphe-moyens";
@@ -87,7 +89,7 @@ export default async function DashboardPage() {
       id: ligne.categoryId,
       nom: categorie?.name ?? "Sans catégorie",
       code: categorie?.codeSyscohada ?? null,
-      couleur: categorie?.color ?? "#94a3b8",
+      couleur: categorie?.color ?? "var(--cat-8)",
       montant: ligne._sum.amount ?? 0,
     };
   });
@@ -171,7 +173,7 @@ export default async function DashboardPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 py-6 md:px-8 md:py-10">
+    <div className="mx-auto w-full max-w-6xl px-4 py-6 md:px-8 md:py-10">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           {/* Dans un cahier, chaque mois est une page. */}
@@ -202,30 +204,13 @@ export default async function DashboardPage() {
             </h2>
 
             {/* Le total est l'échelle de la bande, pas une carte isolée. */}
-            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <span className="titre chiffre text-5xl md:text-6xl">
-                {formatNombre(total)}
-              </span>
-              <span className="code-compte text-muted-foreground">FCFA</span>
-              {variation !== null && (
-                <span
-                  className={`flex items-center gap-1 text-sm ${
-                    variation > 0 ? "text-brique" : "text-vert"
-                  }`}
-                >
-                  {variation > 0 ? (
-                    <ArrowUpRight className="size-4" aria-hidden />
-                  ) : (
-                    <ArrowDownRight className="size-4" aria-hidden />
-                  )}
-                  {Math.abs(variation)} %
-                  <span className="text-muted-foreground">
-                    vs même période en{" "}
-                    {formatMois(precedente.debut).split(" ")[0]}
-                  </span>
-                </span>
-              )}
-            </div>
+            <ChiffreAffichage
+              montant={total}
+              variation={variation}
+              comparaison={`vs même période en ${
+                formatMois(precedente.debut).split(" ")[0]
+              }`}
+            />
 
             <BandeRepartition segments={segments} total={total} />
 
@@ -243,63 +228,64 @@ export default async function DashboardPage() {
           </section>
 
           <section className="mt-10" aria-labelledby="analyse">
-            <h2
-              id="analyse"
-              className="code-compte uppercase text-muted-foreground"
-            >
+            <h2 id="analyse" className="mention">
               Le mois en détail
             </h2>
 
-            <div className="mt-4 border border-reglure bg-card px-4 py-4">
-              <p className="text-sm font-medium">Évolution sur 6 mois</p>
-              <div className="mt-4">
+            <div className="mt-3 space-y-4">
+              <Feuille
+                titre="Évolution sur 6 mois"
+                mention="Le mois courant est à l'encre, les précédents sont réglés"
+              >
                 <GrapheEvolution points={points} />
-              </div>
-            </div>
+              </Feuille>
 
-            <div
-              className={`mt-4 grid gap-4 ${vueComplete ? "md:grid-cols-2" : ""}`}
-            >
-              <div className="border border-reglure bg-card px-4 py-4">
-                <p className="text-sm font-medium">Par moyen de paiement</p>
-                <p className="text-xs text-muted-foreground">
-                  {capitaliser(formatMois(maintenant))}
-                </p>
-                <div className="mt-4">
+              <div className={`grid gap-4 ${vueComplete ? "md:grid-cols-2" : ""}`}>
+                <Feuille
+                  titre="Par moyen de paiement"
+                  mention={capitaliser(formatMois(maintenant))}
+                >
                   <GrapheMoyens moyens={moyens} />
-                </div>
-              </div>
+                </Feuille>
 
-              {vueComplete && (
-                <div className="border border-reglure bg-card px-4 py-4">
-                  <p className="text-sm font-medium">Par employé</p>
-                  <p className="text-xs text-muted-foreground">
-                    {capitaliser(formatMois(maintenant))}
-                  </p>
-                  <div className="mt-4">
+                {vueComplete && (
+                  <Feuille
+                    titre="Par employé"
+                    mention={capitaliser(formatMois(maintenant))}
+                  >
                     <GrapheBarres items={employes} />
-                  </div>
-                </div>
-              )}
+                  </Feuille>
+                )}
+              </div>
             </div>
           </section>
 
           <section className="mt-10" aria-labelledby="notes-en-attente">
-            <h2
-              id="notes-en-attente"
-              className="code-compte uppercase text-muted-foreground"
-            >
+            <h2 id="notes-en-attente" className="mention">
               Notes de frais
             </h2>
-            <div className="mt-2 flex items-baseline gap-2">
-              <span className="titre chiffre text-2xl">{notesEnAttente}</span>
-              <span className="text-sm text-muted-foreground">
+
+            {/*
+              Une carte cliquable en entier plutôt qu'un lien à la fin : ce
+              bloc ne sert qu'à emmener quelque part, et sur un téléphone une
+              cible de la taille de la carte se touche du premier coup.
+            */}
+            <Link
+              href="/notes-de-frais"
+              className="mt-3 flex items-center gap-4 rounded-xl border border-reglure bg-card px-4 py-4 transition-colors hover:bg-muted/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring md:px-5"
+            >
+              <span className="titre chiffre text-3xl">{notesEnAttente}</span>
+              <span className="min-w-0 flex-1 text-sm text-muted-foreground">
                 {notesEnAttente > 1 ? "notes en attente" : "note en attente"}
                 {can(session.role, "reports:approve") && notesEnAttente > 0
                   ? " de votre validation"
                   : ""}
               </span>
-            </div>
+              <ArrowRight
+                className="size-4 shrink-0 text-muted-foreground"
+                aria-hidden
+              />
+            </Link>
           </section>
         </>
       )}
@@ -314,7 +300,7 @@ export default async function DashboardPage() {
  */
 function PremierePage() {
   return (
-    <div className="mt-8 border border-reglure bg-card px-6 py-14 text-center">
+    <div className="mt-8 rounded-xl border border-reglure bg-card px-6 py-14 text-center">
       <p className="titre text-xl">Le cahier est vide</p>
       <p className="mx-auto mt-3 max-w-md text-sm text-muted-foreground">
         Chaque dépense saisie ici alimente vos budgets, vos rapports et vos

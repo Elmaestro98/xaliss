@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { clerkClient } from "@clerk/nextjs/server";
+import { avecSucces } from "@/lib/messages-succes";
 import * as z from "zod";
 import { Role } from "@/generated/prisma/enums";
 import {
@@ -136,7 +137,7 @@ export async function creerNote(
   });
 
   revalidatePath("/notes-de-frais");
-  redirect(`/notes-de-frais/${note.id}`);
+  redirect(avecSucces(`/notes-de-frais/${note.id}`, "note-creee"));
 }
 
 /**

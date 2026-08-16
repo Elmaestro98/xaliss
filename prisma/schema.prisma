@@ -85,10 +85,19 @@ enum SubscriptionStatus {
 // (PROJET.md section 6) ; ORANGE_MONEY et STRIPE sont reserves pour la V2 et ne
 // sont references nulle part dans le code. Les conserver ici ne coute rien et
 // evite une migration d'enum le jour ou l'un des deux arrive.
+// WAVE est le seul prestataire utilise : l'entreprise paie sur un lien du
+// portefeuille marchand (PROJET.md section 9).
+//
+// PAYDUNYA et BAMMITE ont ete ajoutes le 16 aout 2026 lors d'une evaluation
+// abandonnee, et ne sont ecrits nulle part. Ils restent parce que PostgreSQL ne
+// sait pas retirer une valeur d'enum : les enlever d'ici creerait une derive
+// entre le schema et la base, pour aucun gain.
 enum PaymentProvider {
   WAVE
   ORANGE_MONEY
   STRIPE
+  PAYDUNYA
+  BAMMITE
 }
 
 // Le paiement annuel offre deux mois (PROJET.md section 11)
@@ -315,6 +324,15 @@ model Payment {
   billingCycle BillingCycle
   amount       Int // FCFA, entier (PROJET.md section 6)
   status       PaymentStatus   @default(PENDING)
+
+  // INUTILISEES. Ajoutees le 16 aout 2026 pour une integration d'agregateur
+  // (facture a token + page de paiement hebergee) qui a ete abandonnee. Aucun
+  // code ne les lit ni ne les ecrit, et elles sont NULL sur toutes les lignes.
+  // Conservees plutot que supprimees : les retirer demande une migration
+  // destructive pour un gain nul, et elles resserviraient telles quelles le
+  // jour ou un vrai prestataire d'API sera branche.
+  providerInvoiceToken String? @unique
+  providerCheckoutUrl  String?
 
   // Identifiant de transaction Wave (TAxxx), recopie par le client depuis son
   // recu au moment ou il declare avoir paye. C'est la piece a rapprocher du

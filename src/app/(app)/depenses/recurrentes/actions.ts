@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { avecSucces } from "@/lib/messages-succes";
 import { redirect } from "next/navigation";
 import * as z from "zod";
 import { PaymentMethod, RecurringFrequency } from "@/generated/prisma/enums";
@@ -101,7 +102,7 @@ export async function creerRecurrence(
   });
 
   revalidatePath("/depenses/recurrentes");
-  redirect("/depenses/recurrentes");
+  redirect(avecSucces("/depenses/recurrentes", "recurrence-creee"));
 }
 
 /** Met en pause ou réactive une récurrence, sans la supprimer. */

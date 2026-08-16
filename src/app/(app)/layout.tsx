@@ -1,5 +1,4 @@
 import { OrganizationSwitcher, UserButton } from "@clerk/nextjs";
-import { Toaster } from "@/components/ui/sonner";
 import { BasculeTheme } from "@/components/bascule-theme";
 import { type LienNav, NavLaterale, NavMobile } from "@/components/navigation";
 import { ROLES } from "@/lib/paiement";
@@ -111,7 +110,6 @@ export default async function AppLayout({
         <NavMobile liens={liens.slice(0, 5)} />
       </div>
 
-      <Toaster position="top-center" />
     </div>
   );
 }

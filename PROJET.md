@@ -78,6 +78,32 @@ Ce fichier est la **source de vérité** du projet. Toute décision fonctionnell
 - Paramètres : logo, seuils d'alerte, catégories
 - Abonnement : choix du plan (mensuel ou annuel), paiement Wave, factures
 
+### 4.6 Console éditeur — `/editeur`
+
+Pour AFRICATECHNOLOGIE, pas pour les clients. Toutes les entreprises, leur
+abonnement, leur échéance, leurs effectifs, et la file des paiements déclarés
+en attente de vérification.
+
+**Elle encaisse** (décision du 15 août 2026, qui revient sur le choix
+initial — voir §7). Chaque déclaration porte un champ « montant constaté sur
+Wave », **jamais prérempli**, et deux boutons : encaisser, rejeter. Le reste de
+la console est en lecture seule.
+
+Le champ non prérempli est le cœur du dispositif : prérempli, il ferait de la
+confrontation un simple clic, et un clic ne vérifie rien. L'éditeur lit la
+somme sur Wave Business et la retape — un écart marque le paiement en échec
+**sans** activer l'abonnement.
+
+L'aiguillage `/apres-connexion` envoie l'éditeur ici après connexion, et les
+clients vers `/dashboard`. Redirection et non blocage : l'éditeur est aussi
+gérant de sa propre entreprise, `/dashboard` lui reste ouvert.
+
+L'accès ne passe pas par un rôle : `Membership.role` dit ce qu'une personne
+peut faire **dans** son entreprise, or l'éditeur n'est dans aucune. La liste
+vit dans `SUPER_ADMIN_USER_IDS` — une donnée de déploiement, comme
+`ADMIN_SECRET`, qu'aucune requête ne peut modifier. Variable absente = 404
+pour tout le monde.
+
 ### ❌ Hors périmètre V1 (→ V2)
 
 App mobile native, gestion des revenus/trésorerie, multi-devises, multi-succursales, intégrations comptables tierces.
@@ -134,7 +160,16 @@ WAVE_PAYMENT_LINK="https://pay.wave.com/m/..."
 # DISTINCT de CRON_SECRET : un secret déposé chez Vercel pour déclencher des
 # tâches n'a pas à ouvrir l'encaissement.
 ADMIN_SECRET="..."
+
+# Console éditeur /editeur (lecture seule) — identifiants Clerk séparés par des
+# virgules. Absente ou vide : personne n'entre, la page répond 404.
+SUPER_ADMIN_USER_IDS="user_xxx,user_yyy"
 ```
+
+⚠️ **`DATABASE_URL` et `DIRECT_URL` ne sont pas interchangeables.** Ils ont été
+trouvés inversés le 15 août 2026 : l'application tapait la connexion directe et
+le CLI passait par le pooler. Ça ne se voit pas en développement — seulement en
+production, quand les connexions directes s'épuisent et que l'application tombe.
 
 - Middleware Clerk dans **`src/proxy.ts`** (pas `middleware.ts`)
 - Chaque requête Prisma filtre par `organizationId` (issu de `auth()` Clerk)
@@ -194,14 +229,39 @@ ADMIN_SECRET="..."
   ce soit — **un client qui clique n'est pas un client qui a payé**. D'où le statut
   `AWAITING_VERIFICATION` : le confondre avec `SUCCEEDED` offrirait un plan Business à
   qui sait taper une suite de caractères.
-- **L'inaccessibilité remplace la signature.** L'activation passe par
-  `/api/admin/paiements`, protégée par `ADMIN_SECRET` et appelée seulement par
-  `scripts/valider-paiement.ts` — jamais depuis le web. Là où la signature HMAC
-  prouvait l'origine d'un webhook, c'est désormais le fait qu'aucune requête publique
-  ne mène à l'encaissement.
-- **La route, pas le script, encaisse.** Le script est une façade : il n'écrit rien en
-  base. Refaire l'activation en ligne de commande créerait un second chemin
-  d'encaissement, et c'est toujours celui qu'on ne teste pas qui casse.
+- **Bammite (revendeur PayDunya) a été évalué le 16 août 2026, puis écarté.**
+  Conservé ici pour ne pas refaire l'enquête. Son API n'expose qu'un endpoint,
+  `payin/init.php` : ni webhook, ni vérification d'état, ni identifiant de
+  transaction en retour — l'encaissement serait donc resté manuel de toute façon.
+  Sa documentation est par ailleurs fausse sur trois points (identifiants dans le
+  corps et non en `Authorization: Bearer`, champ `country` obligatoire non
+  documenté, `reference_client` en réalité facultatif), et elle exige une
+  `private_key` qui ne nous a jamais été fournie. Aucun bac à sable non plus.
+  **Si le sujet revient, viser PayDunya en direct** : compte gratuit, documentation
+  publique, IPN, vérification d'état et mode test — tout ce qui manque ici.
+- **~~L'inaccessibilité remplace la signature.~~ Révisé le 15 août 2026.**
+  Le choix initial : aucune requête web ne mène à l'encaissement. L'activation
+  ne passait que par `/api/admin/paiements`, protégée par `ADMIN_SECRET` et
+  appelée uniquement par `scripts/valider-paiement.ts`. Là où la signature HMAC
+  prouvait l'origine d'un webhook, c'était l'inaccessibilité.
+  **La console éditeur (§4.6) a levé cette barrière**, à la demande explicite
+  de l'éditeur : valider en ligne de commande à chaque souscription n'était pas
+  tenable à l'usage.
+  Ce qui protège l'encaissement désormais, et qu'il faut tenir :
+  1. `requireEditeur()` en **tête de chaque action serveur** — une action
+     serveur est une route publique tant qu'elle ne s'est pas gardée elle-même ;
+  2. le montant constaté est **retapé** et confronté à l'attendu ;
+  3. l'`AuditLog` enregistre **quel** éditeur a validé (`editeur:user_xxx`), ce
+     que la ligne de commande ne pouvait pas faire.
+  **Risque assumé** : le compte Clerk de l'éditeur devient la clé de
+  l'encaissement. S'il est compromis, un attaquant s'active le plan de son
+  choix — là où il lui aurait fallu un accès au serveur. À compenser par
+  l'authentification à deux facteurs sur ce compte.
+- **Une seule implémentation de l'activation.** Deux chemins y mènent
+  maintenant — le script par `/api/admin/paiements`, la console par une action
+  serveur — mais tous deux appellent `encaisserPaiement()`. Le script reste une
+  façade : il n'écrit rien en base. Deux implémentations divergeraient, et
+  c'est toujours celle qu'on ne teste pas qui casse.
 - **Le montant n'est jamais reçu du client** : il est calculé depuis `lib/plans.ts` à
   la création du paiement, affiché en grand sur l'écran de paiement (le lien Wave est à
   montant libre), et l'éditeur peut le **confronter** à ce qu'il constate au moment de
@@ -423,7 +483,26 @@ Paiement par **lien Wave à montant libre**, encaissement validé à la main :
 ## 10. Sécurité & conformité
 
 - TLS partout, données chiffrées au repos
-- **RLS PostgreSQL** : isolation stricte des tenants
+- **Isolation des entreprises — garde applicative** (`lib/prisma.ts`). Une
+  extension Prisma **refuse** toute requête multi-lignes (`findMany`,
+  `findFirst`, `count`, `aggregate`, `groupBy`, `updateMany`, `deleteMany`) sur
+  une table d'entreprise qui n'est pas filtrée par `organizationId` — et dans un
+  `OR`, il faut que **chaque branche** le porte. Un filtre oublié devient une
+  erreur immédiate au lieu d'une fuite silencieuse. Les requêtes légitimement
+  transverses (crons, purge, console éditeur) passent par `prismaHorsPortee`,
+  dont le nom est fait pour être cherché : `grep prismaHorsPortee src/` donne la
+  liste exhaustive des endroits qui regardent par-dessus la cloison.
+  Vérifiée par `scripts/test-garde-portee.ts` (14 cas).
+- ⚠️ **RLS PostgreSQL : écrit, pas activé** (`prisma/migrations-rls/`). Trois
+  obstacles, documentés là-bas : l'application se connecte en `postgres`, le
+  rôle **propriétaire** des tables, qui ignore ses propres policies ; la règle
+  prévue à l'origine (`auth.jwt()->>'org_id'`) est un outil Supabase inopérant
+  sur une connexion Prisma directe, sans jeton ; et poser le contexte
+  d'entreprise coûte une transaction par requête. La garde applicative couvre
+  le risque réel — l'oubli d'un développeur — mais **pas** une injection SQL,
+  ni une écriture par identifiant non vérifiée, ni une requête lancée hors de
+  l'application. Ne pas promettre du RLS à un client tant que ce dossier n'est
+  pas appliqué.
 - Buckets Storage privés, URLs signées à durée limitée
 - `AuditLog` immuable sur toutes les actions sensibles
 - Sauvegardes quotidiennes, rétention 30 jours
@@ -463,7 +542,16 @@ Vérifiée seulement chez nous, elle ne serait qu'un affichage.
 
 ## 12. Plan de développement (13 semaines)
 
-> **Point d'arrêt** — dernier travail : **refonte de la direction visuelle**
+> **Point d'arrêt** — dernier travail (15 août 2026) : **isolation des
+> entreprises** et **console éditeur**.
+> Garde applicative dans `lib/prisma.ts` (§10), RLS écrit mais non appliqué
+> (`prisma/migrations-rls/`), console `/editeur` en **lecture seule**.
+> Au passage, deux défauts corrigés : `DATABASE_URL` et `DIRECT_URL` étaient
+> **inversés** (l'application n'utilisait pas le pooler — panne garantie en
+> production dès la montée en charge), et `/editeur` se préconstruisait en
+> statique tant que `auth()` n'était pas appelé avant la liste d'autorisation.
+>
+> Avant cela : **refonte de la direction visuelle**
 > (14 août 2026). Passage de « le cahier » clair à « **le cahier, la nuit** » :
 > thème sombre par défaut avec bascule clair, jetons refondus, rayon 0,75rem,
 > réglure promue en texture sémantique, pastilles de statut, montant héros.
@@ -484,7 +572,7 @@ Vérifiée seulement chez nous, elle ne serait qu'un affichage.
 
 | Phase | Contenu                                                        | Durée   | Statut                                                                                                                                                                                                       |
 | ----- | -------------------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1     | Setup : Next.js, Prisma, Supabase, Clerk Orgs, RLS, Vercel     | 1 sem   | 🟡 Next.js 16 + Prisma 7 + Supabase (11 tables, 2 migrations) + Clerk Orgs faits — **reste : RLS (aucune policy écrite), déploiement Vercel** (`vercel.json` et ses 2 crons sont prêts)                       |
+| 1     | Setup : Next.js, Prisma, Supabase, Clerk Orgs, RLS, Vercel     | 1 sem   | 🟡 Next.js 16 + Prisma 7 + Supabase + Clerk Orgs faits. Isolation assurée par la **garde applicative** (§10), RLS **écrit mais non appliqué** (`prisma/migrations-rls/`) — **reste : activer le RLS (nouveau rôle de base), déploiement Vercel** (`vercel.json` et ses 2 crons sont prêts) |
 | 2     | Auth, onboarding entreprise, utilisateurs & rôles              | 1,5 sem | ✅ Connexion, onboarding entreprise, synchro Clerk→base, catégories SYSCOHADA, matrice de permissions, écran d'équipe (changer de rôle, retirer un membre). Les invitations restent déléguées à l'UI Clerk.  |
 | 3     | Module Dépenses : CRUD, catégories, justificatifs, récurrences | 2 sem   | ✅ Système visuel + shadcn/ui, coque de l'app, saisie, journal, justificatifs (Storage + URLs signées), récurrences (+ cron), filtres & pagination, modification et suppression d'une dépense (audit complet) |
 | 4     | OCR + Budgets & alertes email                                  | 2 sem   | ✅ OCR Gemini (`/api/ocr`), budgets par catégorie ou globaux, jauges, seuils configurables, alertes email Resend                                                                                              |

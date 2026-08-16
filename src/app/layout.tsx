@@ -2,8 +2,30 @@ import type { Metadata, Viewport } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { frFR } from "@clerk/localizations";
 import { Archivo, IBM_Plex_Mono } from "next/font/google";
-import { FournisseurTheme } from "@/components/fournisseur-theme";
+import { Suspense } from "react";
+import { CLE_THEME } from "@/components/bascule-theme";
+import { ToastSucces } from "@/components/toast-succes";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
+
+/**
+ * Le thème, avant la première image peinte.
+ *
+ * `<html>` part déjà en `dark` (voir plus bas) : ce script ne sert qu'à
+ * rendre son choix à qui a demandé le clair. Il doit s'exécuter avant que le
+ * navigateur ne peigne quoi que ce soit, sinon l'écran blanchit une fraction
+ * de seconde avant de basculer — d'où sa place en tête de `<body>`, en
+ * synchrone, et non dans un composant React.
+ *
+ * Écrit à la main plutôt que délégué à next-themes : la bibliothèque rend ce
+ * même script DEPUIS un composant client, ce que React 19 signale comme une
+ * erreur (« Encountered a script tag while rendering React component »). Pour
+ * deux thèmes et une classe, trente lignes valent mieux qu'une dépendance qui
+ * se bat avec le moteur de rendu.
+ */
+const SCRIPT_THEME = `(function(){try{var c=localStorage.getItem(${JSON.stringify(
+  CLE_THEME,
+)});if(c==="light"){document.documentElement.classList.remove("dark")}}catch(e){}})()`;
 
 const archivo = Archivo({
   variable: "--font-archivo",
@@ -65,21 +87,25 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Après connexion, on passe par un aiguillage (`/apres-connexion`) :
+  // l'éditeur va vers sa console, les clients vers leur tableau de bord. Une
+  // inscription, elle, ne peut pas être celle de l'éditeur — droit au
+  // tableau de bord.
   return (
     <ClerkProvider
       localization={frFR}
       appearance={apparenceClerk}
       signInUrl="/sign-in"
       signUpUrl="/sign-up"
-      signInFallbackRedirectUrl="/dashboard"
+      signInFallbackRedirectUrl="/apres-connexion"
       signUpFallbackRedirectUrl="/dashboard"
     >
       {/*
-        `dark` est écrit ici, au rendu serveur, plutôt que laissé à
-        next-themes : sans cela la première image peinte est claire, et l'écran
-        blanchit une fraction de seconde avant de basculer. next-themes reprend
-        la main dès l'hydratation — d'où `suppressHydrationWarning`, qui est la
-        façon prévue de dire à React que cet attribut change côté client.
+        `dark` est écrit ici, au rendu serveur : c'est le thème par défaut de
+        Xaalis, et le poser dès le HTML évite l'éclair blanc d'un écran qui
+        démarre clair avant de basculer. `suppressHydrationWarning` est la
+        façon prévue de dire à React que cet attribut peut différer côté
+        client — le script ci-dessous l'y modifie avant l'hydratation.
       */}
       <html
         lang="fr"
@@ -87,7 +113,23 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <body className="flex min-h-full flex-col">
-          <FournisseurTheme>{children}</FournisseurTheme>
+          <script dangerouslySetInnerHTML={{ __html: SCRIPT_THEME }} />
+          {children}
+
+          {/*
+            Le toaster vit à la racine, pas dans le groupe (app) : la console
+            éditeur et la page d'accueil sont en dehors, et une confirmation
+            qui ne s'affiche que sur la moitié des pages est un piège pour le
+            prochain qui ajoutera une action.
+
+            `Suspense` est requis autour de `useSearchParams` — sans lui,
+            Next.js refuse de rendre la page statiquement le jour où l'une
+            d'elles cessera d'être dynamique.
+          */}
+          <Suspense fallback={null}>
+            <ToastSucces />
+          </Suspense>
+          <Toaster position="top-center" />
         </body>
       </html>
     </ClerkProvider>

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { prisma } from "@/lib/prisma";
+import { prisma, prismaHorsPortee } from "@/lib/prisma";
 
 /** Délai de grâce avant effacement définitif — cohérent avec PROJET.md §10. */
 export const JOURS_DE_GRACE = 30;
@@ -16,7 +16,10 @@ export async function purgerOrganisationsExpirees() {
   const limite = new Date();
   limite.setDate(limite.getDate() - JOURS_DE_GRACE);
 
-  const expirees = await prisma.organization.findMany({
+  // Hors portée, par nature : la purge cherche les entreprises à effacer, elle
+  // ne travaille pas POUR une entreprise. Aucun `organizationId` ne pourrait
+  // la restreindre — c'est justement toutes les entreprises qu'elle balaie.
+  const expirees = await prismaHorsPortee.organization.findMany({
     where: { deletedAt: { not: null, lt: limite } },
     select: { id: true, name: true },
   });

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import * as z from "zod";
+import { avecSucces } from "@/lib/messages-succes";
 import {
   AbonnementError,
   assertPeutEcrire,
@@ -211,7 +212,7 @@ export async function creerDepense(
 
   revalidatePath("/depenses");
   revalidatePath("/dashboard");
-  redirect("/depenses");
+  redirect(avecSucces("/depenses", "depense-creee"));
 }
 
 /**
@@ -407,7 +408,7 @@ export async function modifierDepense(
   revalidatePath("/depenses");
   revalidatePath("/dashboard");
   revalidatePath("/budgets");
-  redirect("/depenses");
+  redirect(avecSucces("/depenses", "depense-modifiee"));
 }
 
 /**
@@ -461,5 +462,5 @@ export async function supprimerDepense(id: string): Promise<void> {
   revalidatePath("/depenses");
   revalidatePath("/dashboard");
   revalidatePath("/budgets");
-  redirect("/depenses");
+  redirect(avecSucces("/depenses", "depense-supprimee"));
 }

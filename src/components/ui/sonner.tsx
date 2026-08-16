@@ -1,15 +1,18 @@
 "use client"
 
-import { useTheme } from "next-themes"
 import { Toaster as Sonner, type ToasterProps } from "sonner"
 import { CircleCheckIcon, InfoIcon, TriangleAlertIcon, OctagonXIcon, Loader2Icon } from "lucide-react"
 
+/**
+ * Sans prop `theme`, et c'est voulu : les couleurs viennent des variables
+ * ci-dessous (--popover, --border…), qui changent d'elles-mêmes avec la classe
+ * `dark` posée sur <html>. Lui annoncer le thème en plus reviendrait à tenir
+ * une deuxième copie de la même vérité — et deux copies finissent par
+ * diverger. C'est ce qui faisait dépendre ce composant de next-themes.
+ */
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme()
-
   return (
     <Sonner
-      theme={theme as ToasterProps["theme"]}
       className="toaster group"
       icons={{
         success: (

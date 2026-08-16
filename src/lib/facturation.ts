@@ -14,7 +14,7 @@ import {
   getAbonnement,
 } from "@/lib/abonnement";
 import { prixPour } from "@/lib/plans";
-import { prisma } from "@/lib/prisma";
+import { prisma, prismaHorsPortee } from "@/lib/prisma";
 
 /**
  * Facturation des abonnements — PROJET.md §9.
@@ -134,9 +134,16 @@ export async function declarerPaiement(params: {
   return { type: "enregistree" };
 }
 
-/** Les déclarations qui attendent une vérification humaine. */
+/**
+ * Les déclarations qui attendent une vérification humaine.
+ *
+ * Hors portée, et c'est tout l'objet de la fonction : c'est la file d'attente
+ * de l'ÉDITEUR, pas d'une entreprise. Elle alimente la console éditeur et
+ * scripts/valider-paiement.ts, qui doivent voir les déclarations de tout le
+ * monde pour les rapprocher des versements reçus sur Wave Business.
+ */
 export async function paiementsAVerifier() {
-  return prisma.payment.findMany({
+  return prismaHorsPortee.payment.findMany({
     where: { status: PaymentStatus.AWAITING_VERIFICATION },
     orderBy: { updatedAt: "asc" },
     include: { organization: { select: { name: true } } },
@@ -153,10 +160,16 @@ export type ResultatEncaissement =
 /**
  * Encaisse un paiement constaté et prolonge l'abonnement.
  *
- * C'est le seul point qui active un abonnement, et il n'est jamais atteint
- * depuis le web : seul l'éditeur l'appelle, en ligne de commande, après avoir
- * vu la somme sur le portefeuille marchand. Aucune requête HTTP ne mène ici —
- * c'est ce qui remplace la signature du webhook comme preuve.
+ * C'est le SEUL point qui active un abonnement, et il le reste : deux chemins
+ * y mènent désormais — `scripts/valider-paiement.ts` par
+ * `/api/admin/paiements`, et la console éditeur par une action serveur — mais
+ * tous deux appellent cette fonction. Deux implémentations divergeraient, et
+ * c'est toujours celle qu'on ne teste pas qui casse.
+ *
+ * ⚠️ Depuis l'ouverture de la console (PROJET.md §7), cette fonction EST
+ * atteignable depuis le web. Ce qui la protège n'est plus son inaccessibilité
+ * mais l'authentification de son appelant : `ADMIN_SECRET` côté route,
+ * `requireEditeur()` côté console.
  *
  * Reste idempotent : un paiement déjà encaissé ressort en « deja-traite ». Une
  * double validation par mégarde ne doit pas offrir un mois de plus.
@@ -171,6 +184,12 @@ export async function encaisserPaiement(params: {
   montantRecu?: number;
   transactionId?: string;
   maintenant?: Date;
+  /**
+   * Qui encaisse. La ligne de commande ne sait pas le dire — d'où la valeur
+   * par défaut ; la console, elle, connaît l'identifiant Clerk de l'éditeur
+   * connecté. C'est la trace qui compense la barrière qu'on a levée.
+   */
+  actorId?: string;
 }): Promise<ResultatEncaissement> {
   const paiement = await prisma.payment.findUnique({
     where: { reference: params.reference },
@@ -225,8 +244,9 @@ export async function encaisserPaiement(params: {
     data: {
       organizationId: paiement.organizationId,
       // Aucun utilisateur de l'entreprise n'agit ici : c'est l'éditeur qui
-      // valide, depuis la ligne de commande.
-      actorId: "editeur:validation-manuelle",
+      // valide. Depuis la console, on sait lequel ; depuis la ligne de
+      // commande, on ne sait rien de plus que « l'éditeur ».
+      actorId: params.actorId ?? "editeur:validation-manuelle",
       entity: "Subscription",
       entityId: abonnement.id,
       action: "PAIEMENT",
@@ -251,7 +271,10 @@ export async function encaisserPaiement(params: {
  * filtre sur les statuts en attente l'exclut.
  */
 export async function echouerPaiement(reference: string): Promise<number> {
-  const { count } = await prisma.payment.updateMany({
+  // Hors portée : la référence est globalement unique et c'est l'éditeur qui
+  // rejette, depuis scripts/valider-paiement.ts. Il ne connaît qu'une
+  // référence dictée au téléphone, pas l'entreprise qui l'a émise.
+  const { count } = await prismaHorsPortee.payment.updateMany({
     where: {
       reference,
       status: {

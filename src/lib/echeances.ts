@@ -6,7 +6,7 @@ import { marquerImpaye, suspendre } from "@/lib/abonnement";
 import { envoyerEmail } from "@/lib/email";
 import { formatDate } from "@/lib/format";
 import { JOURS_DE_GRACE, PLANS } from "@/lib/plans";
-import { prisma } from "@/lib/prisma";
+import { prisma, prismaHorsPortee } from "@/lib/prisma";
 
 /**
  * Échéances des abonnements — PROJET.md §9.
@@ -31,7 +31,9 @@ export async function traiterEcheances(maintenant = new Date()): Promise<{
   const suspendus: Bascule[] = [];
 
   // 1. Échéance atteinte, rien n'a été payé : le délai de grâce démarre.
-  const echus = await prisma.subscription.findMany({
+  // Hors portée : un cron d'échéance passe en revue TOUTES les entreprises —
+  // c'est sa raison d'être. Le restreindre à une seule le rendrait inutile.
+  const echus = await prismaHorsPortee.subscription.findMany({
     where: {
       status: {
         in: [SubscriptionStatus.TRIALING, SubscriptionStatus.ACTIVE],
@@ -64,7 +66,8 @@ export async function traiterEcheances(maintenant = new Date()): Promise<{
   }
 
   // 2. Délai de grâce écoulé : passage en lecture seule.
-  const aSuspendre = await prisma.subscription.findMany({
+  // Hors portée, pour la même raison qu'au point 1.
+  const aSuspendre = await prismaHorsPortee.subscription.findMany({
     where: {
       status: SubscriptionStatus.PAST_DUE,
       graceEndsAt: { not: null, lt: maintenant },

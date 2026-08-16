@@ -3,7 +3,7 @@ import "server-only";
 import * as z from "zod";
 import { PaymentMethod } from "@/generated/prisma/enums";
 import { verifierAlertesBudget } from "@/lib/alertes-budget";
-import { prisma } from "@/lib/prisma";
+import { prisma, prismaHorsPortee } from "@/lib/prisma";
 
 /**
  * Dépenses récurrentes — PROJET.md §4.1 : « loyer, abonnements, générées
@@ -66,7 +66,9 @@ export async function genererDepensesEchues(): Promise<{
   ignorees: number;
 }> {
   const maintenant = new Date();
-  const echues = await prisma.recurringExpense.findMany({
+  // Hors portée : le cron des récurrences génère les dépenses dues de toutes
+  // les entreprises en une passe. C'est un balayage global par construction.
+  const echues = await prismaHorsPortee.recurringExpense.findMany({
     where: { active: true, nextRunAt: { lte: maintenant } },
   });
 

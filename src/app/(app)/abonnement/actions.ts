@@ -18,6 +18,12 @@ const SchemaSouscription = z.object({
 export type EtatFormulaire = {
   erreurs?: Record<string, string[]>;
   message?: string;
+  /**
+   * Vrai quand l'action a abouti. Sans ce drapeau, `message` sert à la fois
+   * aux réussites et aux échecs, et rien ne permet de décider s'il faut un
+   * toast vert ou un texte rouge.
+   */
+  succes?: boolean;
 };
 
 /**
@@ -133,5 +139,5 @@ export async function declarerAvoirPaye(
 
   revalidatePath("/abonnement");
   revalidatePath(`/abonnement/paiement/${reference}`);
-  return { message: "Déclaration enregistrée." };
+  return { message: "Déclaration enregistrée.", succes: true };
 }

@@ -1,8 +1,10 @@
 "use client";
 
-import { useTheme } from "next-themes";
 import { Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+/** La clé de stockage, partagée avec le script d'amorçage du layout racine. */
+export const CLE_THEME = "xaalis-theme";
 
 /**
  * Basculer entre la nuit et le jour.
@@ -12,19 +14,35 @@ import { cn } from "@/lib/utils";
  * la bascule vit dans la coque de l'application et non enterrée dans les
  * paramètres — on en a besoin sur le terrain, pas au bureau.
  *
- * L'icône est choisie par CSS (`dark:`), pas par l'état React. Au rendu
- * serveur le thème actif n'est pas connu : le résoudre en JavaScript
- * imposerait d'attendre l'hydratation, donc d'afficher un trou à la place du
- * bouton. La classe `dark` est déjà posée sur `<html>` avant la première
- * peinture — laisser CSS trancher rend le bon icône du premier coup.
+ * Aucun état React, aucun contexte, aucune bibliothèque. Le thème EST la
+ * classe `dark` sur `<html>` : la lire, c'est interroger le DOM ; la changer,
+ * c'est basculer la classe. Un état React en doublon ne pourrait que diverger
+ * de la seule chose qui décide vraiment de la couleur des pixels.
+ *
+ * L'icône aussi est choisie par CSS (`dark:`), pas par JavaScript. Au rendu
+ * serveur le thème actif n'est pas connu ; le résoudre en JS imposerait
+ * d'attendre l'hydratation, donc d'afficher un trou à la place du bouton.
  */
 export function BasculeTheme({ className }: { className?: string }) {
-  const { resolvedTheme, setTheme } = useTheme();
+  function basculer() {
+    const racine = document.documentElement;
+    const versLaNuit = !racine.classList.contains("dark");
+
+    racine.classList.toggle("dark", versLaNuit);
+
+    // Le mode privé de Safari fait échouer l'écriture. Le thème s'applique
+    // quand même pour cette visite — il ne sera simplement pas retenu.
+    try {
+      localStorage.setItem(CLE_THEME, versLaNuit ? "dark" : "light");
+    } catch {
+      // Sans mémoire, mais pas sans thème.
+    }
+  }
 
   return (
     <button
       type="button"
-      onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+      onClick={basculer}
       // Un libellé unique, vrai dans les deux sens : décrire l'état cible
       // (« passer en clair ») obligerait à connaître l'état courant côté
       // serveur, ce qui est précisément ce qu'on évite ici.

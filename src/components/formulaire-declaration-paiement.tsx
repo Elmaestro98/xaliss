@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { useRetourAction } from "@/hooks/use-retour-action";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,6 +29,8 @@ export function FormulaireDeclarationPaiement({
     {},
   );
 
+  useRetourAction(etat);
+
   return (
     <form action={action} className="mt-4">
       <Label htmlFor="transactionId">Identifiant de la transaction Wave</Label>
@@ -49,8 +52,10 @@ export function FormulaireDeclarationPaiement({
           {etat.erreurs.transactionId[0]}
         </p>
       )}
-      {etat.message && (
-        <p role="status" className="mt-2 text-sm">
+      {/* La réussite passe par un toast ; ici ne reste que ce qui doit être lu
+          pour corriger quelque chose. */}
+      {etat.message && !etat.succes && (
+        <p role="alert" className="mt-2 text-sm text-brique">
           {etat.message}
         </p>
       )}

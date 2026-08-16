@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { avecSucces } from "@/lib/messages-succes";
 import { redirect } from "next/navigation";
 import * as z from "zod";
 import { BudgetPeriod } from "@/generated/prisma/enums";
@@ -115,7 +116,7 @@ export async function creerBudget(
   });
 
   revalidatePath("/budgets");
-  redirect("/budgets");
+  redirect(avecSucces("/budgets", "budget-cree"));
 }
 
 export async function supprimerBudget(id: string): Promise<void> {

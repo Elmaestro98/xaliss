@@ -78,8 +78,16 @@ export default async function DashboardPage() {
   const totalPrecedent = sommePrecedente._sum.amount ?? 0;
   const variation = evolution(total, totalPrecedent);
 
+  // Les identifiants viennent d'un groupBy déjà porté : filtrer à nouveau sur
+  // l'entreprise est redondant AUJOURD'HUI. On le fait quand même, parce que
+  // cette redondance est ce qui sépare une requête juste par construction
+  // d'une requête juste par raisonnement — et le raisonnement ne survit pas
+  // à la prochaine modification de `perimetre`.
   const categories = await prisma.category.findMany({
-    where: { id: { in: parCategorie.map((c) => c.categoryId) } },
+    where: {
+      organizationId: session.organizationId,
+      id: { in: parCategorie.map((c) => c.categoryId) },
+    },
     select: { id: true, name: true, codeSyscohada: true, color: true },
   });
 

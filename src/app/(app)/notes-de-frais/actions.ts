@@ -17,7 +17,7 @@ import { envoyerEmail } from "@/lib/email";
 import { formatFCFA } from "@/lib/format";
 import { SchemaExtractionRecu } from "@/lib/ocr";
 import { assertCan } from "@/lib/permissions";
-import { prisma } from "@/lib/prisma";
+import { prisma, transactionPortee } from "@/lib/prisma";
 import { SchemaDepense } from "@/lib/schema-depense";
 import { requireSession } from "@/lib/session";
 import {
@@ -115,7 +115,7 @@ export async function creerNote(
     return { erreurs: z.flattenError(resultat.error).fieldErrors };
   }
 
-  const note = await prisma.$transaction(async (tx) => {
+  const note = await transactionPortee(session.organizationId, async (tx) => {
     const note = await tx.expenseReport.create({
       data: {
         organizationId: session.organizationId,
@@ -228,7 +228,7 @@ export async function ajouterDepenseNote(
   }
 
   try {
-    await prisma.$transaction(async (tx) => {
+    await transactionPortee(session.organizationId, async (tx) => {
       const depense = await tx.expense.create({
         data: {
           ...resultat.data,
@@ -316,7 +316,7 @@ export async function retirerDepenseNote(expenseId: string): Promise<void> {
   }
   const reportId = depense.report.id;
 
-  await prisma.$transaction(async (tx) => {
+  await transactionPortee(session.organizationId, async (tx) => {
     await tx.expense.delete({ where: { id: expenseId } });
     await tx.expenseReport.update({
       where: { id: reportId },
@@ -359,7 +359,7 @@ export async function soumettreNote(reportId: string): Promise<void> {
   // bouton dans ce cas, ce contrôle n'est qu'un filet.
   if (!note || note._count.expenses === 0) return;
 
-  await prisma.$transaction(async (tx) => {
+  await transactionPortee(session.organizationId, async (tx) => {
     await tx.expenseReport.update({
       where: { id: reportId },
       data: { status: "SOUMISE", submittedAt: new Date() },
@@ -441,7 +441,7 @@ export async function approuverNote(reportId: string): Promise<void> {
   });
   if (!note) return;
 
-  await prisma.$transaction(async (tx) => {
+  await transactionPortee(session.organizationId, async (tx) => {
     await tx.expenseReport.update({
       where: { id: reportId },
       data: { status: "APPROUVEE" },
@@ -504,7 +504,7 @@ export async function rejeterNote(
     return { message: "Cette note n'est plus en attente de validation." };
   }
 
-  await prisma.$transaction(async (tx) => {
+  await transactionPortee(session.organizationId, async (tx) => {
     await tx.expenseReport.update({
       where: { id: reportId },
       data: { status: "REJETEE", rejectionReason: resultat.data.motif },
@@ -555,7 +555,7 @@ export async function corrigerNote(reportId: string): Promise<void> {
   });
   if (!note) return;
 
-  await prisma.$transaction(async (tx) => {
+  await transactionPortee(session.organizationId, async (tx) => {
     await tx.expenseReport.update({
       where: { id: reportId },
       data: { status: "BROUILLON", rejectionReason: null },
@@ -601,7 +601,7 @@ export async function rembourserNote(reportId: string): Promise<void> {
   });
   if (!note) return;
 
-  await prisma.$transaction(async (tx) => {
+  await transactionPortee(session.organizationId, async (tx) => {
     await tx.expense.updateMany({
       where: { reportId },
       data: { status: "VALIDEE" },

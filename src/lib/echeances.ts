@@ -6,7 +6,7 @@ import { marquerImpaye, suspendre } from "@/lib/abonnement";
 import { envoyerEmail } from "@/lib/email";
 import { formatDate } from "@/lib/format";
 import { JOURS_DE_GRACE, PLANS } from "@/lib/plans";
-import { prisma, prismaHorsPortee } from "@/lib/prisma";
+import { prismaHorsPortee, prismaPourOrg } from "@/lib/prisma";
 
 /**
  * Échéances des abonnements — PROJET.md §9.
@@ -46,7 +46,11 @@ export async function traiterEcheances(maintenant = new Date()): Promise<{
   });
 
   for (const abonnement of echus) {
-    const aJour = await marquerImpaye(abonnement.id, maintenant);
+    const aJour = await marquerImpaye(
+      abonnement.id,
+      abonnement.organization.id,
+      maintenant,
+    );
     impayes.push({
       organisation: abonnement.organization.name,
       plan: abonnement.plan,
@@ -77,7 +81,7 @@ export async function traiterEcheances(maintenant = new Date()): Promise<{
   });
 
   for (const abonnement of aSuspendre) {
-    await suspendre(abonnement.id);
+    await suspendre(abonnement.id, abonnement.organization.id);
     suspendus.push({
       organisation: abonnement.organization.name,
       plan: abonnement.plan,
@@ -109,7 +113,7 @@ async function prevenirGerants(params: {
   corps: string;
   couleur: string;
 }): Promise<void> {
-  const adhesions = await prisma.membership.findMany({
+  const adhesions = await prismaPourOrg(params.organizationId).membership.findMany({
     where: { organizationId: params.organizationId, role: Role.ADMIN },
     select: { userId: true },
   });

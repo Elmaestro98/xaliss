@@ -1,0 +1,1242 @@
+<title>Prise en main de Xaalis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+/* ==================================================================
+   PRISE EN MAIN DE XAALIS — feuille de style
+   Reprend le système visuel de l'application (« le cahier, la nuit »,
+   src/app/globals.css) : quatre surfaces, une encre, aucune ombre,
+   la réglure porte la structure et sert aussi de texture.
+   ================================================================== */
+
+/* --- JOUR : le cahier ouvert sur un bureau ----------------------- */
+:root {
+  --papier: #eef1f7;
+  --feuille: #ffffff;
+  --pose: #e4eaf4;
+  --reglure: #ccd8ea;
+  --encre: #131720;
+  --encre-pale: #5a6782;
+  --indigo: #2b3a8f;
+  --indigo-pose: #dfe6f2;
+  --vert: #17835a;
+  --ocre: #b45309;
+  --brique: #b42318;
+
+  --rayon: 0.75rem;
+}
+
+/* --- NUIT : le thème par défaut de l'application ------------------ */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --papier: #0b0d12;
+    --feuille: #12151e;
+    --pose: #1a1f2b;
+    --reglure: #232a3a;
+    --encre: #e9edf7;
+    --encre-pale: #8d98b3;
+    --indigo: #7c8cf8;
+    --indigo-pose: #1b2136;
+    --vert: #3ecf8e;
+    --ocre: #e8a33d;
+    --brique: #ff6b6b;
+  }
+}
+:root[data-theme="dark"] {
+  --papier: #0b0d12;
+  --feuille: #12151e;
+  --pose: #1a1f2b;
+  --reglure: #232a3a;
+  --encre: #e9edf7;
+  --encre-pale: #8d98b3;
+  --indigo: #7c8cf8;
+  --indigo-pose: #1b2136;
+  --vert: #3ecf8e;
+  --ocre: #e8a33d;
+  --brique: #ff6b6b;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--papier);
+  color: var(--encre);
+  font-family: "Archivo", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 1rem;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Le contraste titre/texte vient de l'axe de largeur d'Archivo,
+   pas d'une seconde famille : une seule police à télécharger. */
+.titre {
+  font-family: "Archivo", ui-sans-serif, system-ui, sans-serif;
+  font-stretch: 118%;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+  line-height: 1.2;
+}
+
+/* Les petites capitales du registre : en-têtes de colonne, étiquettes. */
+.mention {
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--encre-pale);
+}
+
+.code {
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+  font-size: 0.875em;
+  background: var(--pose);
+  border-radius: 0.3rem;
+  padding: 0.08em 0.34em;
+  white-space: nowrap;
+}
+
+.bloc-code {
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+  font-size: 0.8125rem;
+  line-height: 1.9;
+  margin: 0;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+/* La réglure comme texture : ce qui n'est pas encore écrit. */
+.texture {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    var(--reglure) 0,
+    var(--reglure) 1px,
+    transparent 1px,
+    transparent 0.375rem
+  );
+}
+
+/* ---------------- Ossature de page ---------------- */
+
+.page {
+  max-width: 54rem;
+  margin: 0 auto;
+  padding: 0 1.25rem 6rem;
+}
+
+header.couverture {
+  border-bottom: 1px solid var(--reglure);
+  padding: 3.5rem 0 2.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+header.couverture h1 { font-size: clamp(2.1rem, 6vw, 3.1rem); margin: 0; }
+header.couverture p.chapeau {
+  margin: 0;
+  max-width: 48ch;
+  font-size: 1.0625rem;
+  color: var(--encre-pale);
+}
+.ligne-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.25rem;
+  margin-top: 0.4rem;
+}
+
+/* ---------------- Sommaire ---------------- */
+
+nav.sommaire {
+  margin-top: 2.5rem;
+  border: 1px solid var(--reglure);
+  border-radius: var(--rayon);
+  background: var(--feuille);
+  padding: 1.25rem 1.4rem 1.4rem;
+}
+nav.sommaire ol {
+  list-style: none;
+  margin: 0.9rem 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 0 1.75rem;
+}
+nav.sommaire a {
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
+  padding: 0.4rem 0;
+  color: var(--encre);
+  text-decoration: none;
+  border-bottom: 1px solid var(--reglure);
+}
+nav.sommaire a:hover { color: var(--indigo); }
+nav.sommaire a span.mention { flex: none; }
+
+/* ---------------- Sections ---------------- */
+
+section.feuillet {
+  margin-top: 3.25rem;
+  scroll-margin-top: 4.5rem;
+}
+section.feuillet > h2 {
+  font-size: clamp(1.45rem, 3.4vw, 1.85rem);
+  margin: 0.35rem 0 0;
+}
+h3.titre { font-size: 1.15rem; margin: 2rem 0 0.5rem; }
+
+p, section.feuillet > ul li { max-width: 68ch; }
+
+/* ---------------- Étapes : la séquence du registre ---------------- */
+
+ol.etapes {
+  list-style: none;
+  counter-reset: etape;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  border-top: 1px solid var(--reglure);
+}
+ol.etapes > li {
+  counter-increment: etape;
+  display: grid;
+  grid-template-columns: 3rem 1fr;
+  gap: 0 1rem;
+  padding: 1.1rem 0;
+  border-bottom: 1px solid var(--reglure);
+}
+ol.etapes > li::before {
+  content: counter(etape, decimal-leading-zero);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--indigo);
+  padding-top: 0.2rem;
+}
+ol.etapes p { margin: 0.45rem 0 0; }
+ol.etapes p:first-child { margin-top: 0; }
+
+/* ---------------- Feuilles posées ---------------- */
+
+.feuille {
+  background: var(--feuille);
+  border: 1px solid var(--reglure);
+  border-radius: var(--rayon);
+  padding: 1.15rem 1.35rem;
+  margin-top: 1.5rem;
+}
+.feuille > :first-child { margin-top: 0; }
+.feuille > :last-child { margin-bottom: 0; }
+
+/* Un filet de couleur à gauche : le ton dit la nature de l'encadré. */
+.note { border-left-width: 2px; }
+.note.attention { border-left-color: var(--ocre); }
+.note.danger { border-left-color: var(--brique); }
+.note.repere { border-left-color: var(--indigo); }
+
+.grille {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+.grille .feuille { margin-top: 0; }
+
+/* ---------------- Tableaux ---------------- */
+
+.cadre-tableau {
+  overflow-x: auto;
+  margin-top: 1.5rem;
+  border: 1px solid var(--reglure);
+  border-radius: var(--rayon);
+  background: var(--feuille);
+}
+table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 32rem;
+  font-size: 0.9375rem;
+}
+th, td {
+  text-align: left;
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid var(--reglure);
+  vertical-align: top;
+}
+thead th {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--encre-pale);
+}
+tbody tr:last-child td { border-bottom: 0; }
+td.chiffre, th.chiffre { font-variant-numeric: tabular-nums; text-align: right; }
+
+/* ---------------- Pastilles de statut ---------------- */
+
+.pastille {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  border: 1px solid var(--reglure);
+  border-radius: 999px;
+  padding: 0.1rem 0.6rem 0.15rem;
+  white-space: nowrap;
+}
+.pastille::before {
+  content: "";
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 999px;
+  background: currentColor;
+}
+.pastille.neutre { color: var(--encre-pale); }
+.pastille.indigo { color: var(--indigo); }
+.pastille.ocre { color: var(--ocre); }
+.pastille.vert { color: var(--vert); }
+.pastille.brique { color: var(--brique); }
+
+/* ---------------- Filtre par profil ---------------- */
+
+.filtre {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  margin-top: 2.5rem;
+  padding: 0.75rem 0;
+  background: var(--papier);
+  border-bottom: 1px solid var(--reglure);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.filtre .mention { margin-right: 0.35rem; }
+.filtre button {
+  font: inherit;
+  font-size: 0.875rem;
+  color: var(--encre-pale);
+  background: var(--feuille);
+  border: 1px solid var(--reglure);
+  border-radius: 999px;
+  padding: 0.25rem 0.85rem 0.3rem;
+  cursor: pointer;
+  transition: color 120ms, background-color 120ms, border-color 120ms;
+}
+.filtre button:hover { color: var(--encre); }
+.filtre button[aria-pressed="true"] {
+  color: var(--indigo);
+  background: var(--indigo-pose);
+  border-color: var(--indigo);
+}
+.filtre button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--indigo);
+  outline-offset: 2px;
+  border-radius: 0.3rem;
+}
+[hidden] { display: none !important; }
+
+.etiquette-role {
+  display: inline-block;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.6875rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--indigo);
+  border: 1px solid var(--reglure);
+  border-radius: 999px;
+  padding: 0.1rem 0.55rem 0.15rem;
+}
+
+/* ---------------- Pied ---------------- */
+
+footer.pied {
+  margin-top: 4.5rem;
+  padding-top: 1.75rem;
+  border-top: 1px solid var(--reglure);
+  color: var(--encre-pale);
+  font-size: 0.9rem;
+}
+a { color: var(--indigo); }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+</style>
+
+<div class="page">
+
+<header class="couverture">
+  <span class="mention">Guide de prise en main &middot; version 1</span>
+  <h1 class="titre">Xaalis, pas à pas</h1>
+  <p class="chapeau">
+    Tout ce qu'il faut savoir pour utiliser Xaalis dès le premier jour :
+    saisir une dépense, faire rembourser une note de frais, tenir un budget,
+    payer son abonnement par Wave. Un chapitre par profil — lisez le vôtre,
+    ignorez les autres.
+  </p>
+  <div class="ligne-meta">
+    <span class="mention">Gestion des dépenses pour PME</span>
+    <span class="mention">Interface en français &middot; montants en FCFA</span>
+    <span class="mention">AFRICATECHNOLOGIE / E-DEV</span>
+  </div>
+</header>
+
+<section class="feuillet" id="deux-minutes">
+  <span class="mention">Pour commencer</span>
+  <h2 class="titre">Xaalis en deux minutes</h2>
+  <p>
+    Xaalis (« l'argent » en wolof) remplace le cahier de dépenses de
+    l'entreprise. Chaque dépense y est enregistrée avec sa photo de reçu ;
+    les budgets préviennent avant d'être dépassés ; les notes de frais des
+    employés suivent un circuit de validation ; et la comptabilité sort en
+    Excel ou en PDF quand le comptable en a besoin.
+  </p>
+  <p>
+    Une seule règle à retenir avant de lire la suite :
+    <strong>ce que vous voyez dépend de votre rôle</strong>. Un employé n'a
+    même pas le menu « Budgets » dans sa barre latérale. C'est voulu.
+  </p>
+
+  <div class="cadre-tableau">
+    <table>
+      <thead>
+        <tr>
+          <th>Profil</th>
+          <th>Qui c'est</th>
+          <th>Ce qu'il fait dans Xaalis</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Gérant</strong><br><span class="mention">ADMIN</span></td>
+          <td>Le dirigeant de la PME</td>
+          <td>Voit tout, approuve les notes de frais, gère l'équipe, les paramètres et l'abonnement</td>
+        </tr>
+        <tr>
+          <td><strong>Comptable</strong><br><span class="mention">COMPTABLE</span></td>
+          <td>Comptable interne ou cabinet</td>
+          <td>Saisit les dépenses, tient les catégories et les budgets, sort les exports, marque les remboursements</td>
+        </tr>
+        <tr>
+          <td><strong>Employé</strong><br><span class="mention">EMPLOYE</span></td>
+          <td>Commercial, chauffeur, technicien</td>
+          <td>Photographie ses reçus et soumet ses notes de frais. Ne voit que ses propres dépenses</td>
+        </tr>
+        <tr>
+          <td><strong>Éditeur</strong><br><span class="mention">CONSOLE</span></td>
+          <td>AFRICATECHNOLOGIE, pas un client</td>
+          <td>Encaisse les paiements Wave et suit les entreprises abonnées</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="feuille note repere">
+    <p>
+      <strong>Deux contrôles se cumulent, ne les confondez pas.</strong>
+      Le <em>rôle</em> dit ce que vous avez le droit de faire ; le
+      <em>plan</em> dit ce que l'entreprise a payé. Un gérant en plan Starter
+      n'ouvre pas les notes de frais — ce n'est pas un droit qui manque,
+      c'est un plan à faire évoluer.
+    </p>
+  </div>
+</section>
+
+<nav class="sommaire" aria-label="Sommaire">
+  <span class="mention">Sommaire</span>
+  <ol>
+    <li><a href="#connexion"><span class="mention">01</span> Se connecter la première fois</a></li>
+    <li><a href="#employe"><span class="mention">02</span> Parcours employé</a></li>
+    <li><a href="#comptable"><span class="mention">03</span> Parcours comptable</a></li>
+    <li><a href="#gerant"><span class="mention">04</span> Parcours gérant</a></li>
+    <li><a href="#editeur"><span class="mention">05</span> Console éditeur</a></li>
+    <li><a href="#couleurs"><span class="mention">06</span> Lire les statuts et les couleurs</a></li>
+    <li><a href="#wave"><span class="mention">07</span> Payer par Wave, des deux côtés</a></li>
+    <li><a href="#automatique"><span class="mention">08</span> Ce qui se fait tout seul</a></li>
+    <li><a href="#questions"><span class="mention">09</span> Questions fréquentes</a></li>
+    <li><a href="#demo"><span class="mention">10</span> Scénario de démonstration</a></li>
+  </ol>
+</nav>
+
+<div class="filtre" role="group" aria-label="Filtrer les parcours par profil">
+  <span class="mention">Afficher</span>
+  <button type="button" data-role="tous" aria-pressed="true">Tout le guide</button>
+  <button type="button" data-role="employe" aria-pressed="false">Employé</button>
+  <button type="button" data-role="comptable" aria-pressed="false">Comptable</button>
+  <button type="button" data-role="gerant" aria-pressed="false">Gérant</button>
+  <button type="button" data-role="editeur" aria-pressed="false">Éditeur</button>
+</div>
+
+<!-- ============================== 01 ============================== -->
+<section class="feuillet" id="connexion" data-roles="employe comptable gerant editeur">
+  <span class="mention">01 &middot; Tout le monde</span>
+  <h2 class="titre">Se connecter la première fois</h2>
+  <p>
+    La connexion passe par Clerk, le service d'identité de Xaalis. Vous n'avez
+    pas de mot de passe à retenir si vous utilisez Google : le bouton est sur
+    la même page.
+  </p>
+
+  <ol class="etapes">
+    <li>
+      <div>
+        <p><strong>Ouvrez le lien reçu par email</strong>, ou allez sur l'adresse de Xaalis et cliquez sur <em>Se connecter</em>.</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <p><strong>Créez votre compte</strong> (email + mot de passe, ou Google). Si vous avez été invité, utilisez <strong>exactement l'adresse email où vous avez reçu l'invitation</strong> — sinon vous créerez un compte sans entreprise.</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <p><strong>Choisissez ou créez votre entreprise.</strong> Xaalis vous le demande avant d'afficher quoi que ce soit : toutes les données appartiennent à une entreprise, jamais à une personne.</p>
+        <p>Celui qui crée l'entreprise devient automatiquement <strong>gérant</strong>. Les personnes invitées arrivent en <strong>employé</strong> ; le gérant change leur rôle ensuite depuis <em>Équipe</em>.</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <p><strong>Vous arrivez sur le tableau de bord.</strong> La barre latérale (ou la barre du bas sur téléphone) ne montre que les rubriques auxquelles vous avez droit.</p>
+      </div>
+    </li>
+  </ol>
+
+  <div class="feuille note attention">
+    <p>
+      <strong>Vous appartenez à plusieurs entreprises ?</strong> Le sélecteur
+      en haut de la barre latérale permet de basculer. Vérifiez toujours quelle
+      entreprise est active avant de saisir une dépense — c'est l'erreur la
+      plus pénible à corriger.
+    </p>
+  </div>
+
+  <h3 class="titre">L'essai gratuit</h3>
+  <p>
+    Une entreprise nouvellement créée démarre sur un essai gratuit de
+    <strong>7 jours</strong>, au niveau du plan Pro. Tout fonctionne pendant
+    l'essai. À l'échéance, il faut choisir un plan et le payer
+    (voir <a href="#wave">chapitre 07</a>).
+  </p>
+</section>
+
+<!-- ============================== 02 ============================== -->
+<section class="feuillet" id="employe" data-roles="employe">
+  <span class="mention">02 &middot; Employé</span>
+  <h2 class="titre">Parcours employé — se faire rembourser</h2>
+  <p>
+    Vous avez avancé de l'argent pour l'entreprise : carburant, taxi, achat de
+    pièces. Vous n'enregistrez pas une dépense directement dans le journal —
+    vous montez une <strong>note de frais</strong>, qui regroupe une ou
+    plusieurs dépenses et part en validation chez le gérant.
+  </p>
+
+  <ol class="etapes">
+    <li>
+      <div>
+        <p><strong>Menu « Notes de frais », puis « Nouvelle note ».</strong> Donnez-lui un titre parlant : <em>Déplacement Dakar — août</em>. Une note vaut généralement pour une mission ou pour un mois.</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <p><strong>Ajoutez une dépense à la note.</strong> Le formulaire commence par le justificatif, et ce n'est pas un hasard : c'est le geste réel.</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <p><strong>Photographiez le reçu</strong> (ou déposez un PDF, 10 Mo maximum). Xaalis affiche <em>« Lecture du reçu en cours… »</em>, puis pré-remplit le montant, la date et le fournisseur.</p>
+        <p>Le message <em>« Reçu analysé (confiance 87 %) »</em> veut dire : <strong>relisez avant d'enregistrer</strong>. La lecture automatique se trompe sur les tickets froissés ou mal éclairés, et c'est votre remboursement qui est en jeu.</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <p><strong>Complétez ce qui manque</strong> : montant, date, <em>Payé par</em> (espèces, Wave, Orange Money, virement, carte), catégorie, fournisseur, description. Puis enregistrez. Répétez pour chaque reçu de la même mission.</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <p><strong>Soumettez la note.</strong> Tant qu'elle est en <span class="pastille neutre">Brouillon</span>, vous la modifiez librement. Le bouton <em>Soumettre</em> la fait passer en <span class="pastille indigo">Soumise</span> et prévient le gérant par email.</p>
+        <p>Une note vide ne peut pas être soumise : ajoutez au moins une dépense.</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <p><strong>Attendez la décision.</strong> Trois suites possibles :</p>
+        <p><span class="pastille vert">Approuvée</span> — le gérant a validé, le remboursement suit.</p>
+        <p><span class="pastille brique">Rejetée</span> — le motif est écrit sur la note. Cliquez sur <em>Corriger</em> : elle repasse en brouillon, vous réparez, vous resoumettez.</p>
+        <p><span class="pastille vert">Remboursée</span> — l'argent vous a été rendu. Les dépenses entrent alors dans le journal de l'entreprise et deviennent définitives.</p>
+      </div>
+    </li>
+  </ol>
+
+  <div class="feuille note attention">
+    <p>
+      <strong>Une note remboursée ne se modifie plus</strong>, ni par vous ni
+      par le comptable. Elle est passée par une approbation : la retoucher
+      après coup reviendrait à réécrire une décision déjà prise. Une erreur
+      constatée après remboursement se règle avec le comptable, pas dans
+      l'écran.
+    </p>
+  </div>
+
+  <h3 class="titre">Ce que vous ne verrez pas</h3>
+  <p>
+    Les dépenses de vos collègues, les budgets, les rapports, l'équipe,
+    l'abonnement. Votre tableau de bord est une vue personnelle : vos
+    dépenses, vos notes en cours. Ce n'est pas un réglage d'affichage — c'est
+    vérifié sur le serveur à chaque requête.
+  </p>
+</section>
+
+<!-- ============================== 03 ============================== -->
+<section class="feuillet" id="comptable" data-roles="comptable gerant">
+  <span class="mention">03 &middot; Comptable et gérant</span>
+  <h2 class="titre">Parcours comptable — tenir le journal</h2>
+
+  <h3 class="titre">Saisir une dépense</h3>
+  <ol class="etapes">
+    <li>
+      <div>
+        <p><strong>Menu « Dépenses », bouton « Nouvelle dépense ».</strong></p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <p><strong>Joignez le justificatif en premier</strong> pour déclencher la lecture automatique du reçu, puis vérifiez les champs pré-remplis. Le justificatif est facultatif, mais un journal sans pièces ne vaut rien en contrôle fiscal.</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <p><strong>Choisissez la catégorie.</strong> Elles sont alignées sur le plan comptable SYSCOHADA — le numéro de compte (601, 6053, 622…) est affiché à côté du nom. C'est ce numéro qui rend l'export directement exploitable par le cabinet.</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <p><strong>Enregistrez.</strong> Si la dépense fait franchir un seuil de budget, l'alerte part immédiatement par email au gérant et au comptable.</p>
+      </div>
+    </li>
+  </ol>
+
+  <h3 class="titre">Retrouver une dépense</h3>
+  <p>
+    La page <em>Dépenses</em> est le journal complet. Le champ de recherche
+    cherche dans le <strong>fournisseur et la description</strong> ; les
+    filtres restreignent par période, catégorie, employé ou statut. Les
+    filtres se combinent, et l'adresse de la page les conserve : une vue utile
+    se met en favori.
+  </p>
+
+  <h3 class="titre">Corriger et supprimer</h3>
+  <div class="feuille note danger">
+    <p>
+      <strong>La suppression est ouverte au comptable, et elle est définitive
+      à l'écran.</strong> Le garde-fou n'est pas la permission mais la trace :
+      le journal d'audit conserve le contenu intégral de toute dépense
+      effacée, avec son auteur et l'heure. Préférez corriger plutôt que
+      supprimer — corriger ne consomme pas de quota.
+    </p>
+    <p>
+      Une dépense <strong>issue d'une note de frais remboursée</strong>
+      n'offre ni modification ni suppression depuis le journal : elle a été
+      approuvée, elle est figée.
+    </p>
+  </div>
+
+  <h3 class="titre">Les dépenses récurrentes</h3>
+  <p>
+    Loyer, abonnement internet, assurance : déclarez-les une fois dans
+    <em>Dépenses &rsaquo; Récurrentes</em> avec leur fréquence, et Xaalis les
+    crée tout seul pendant la nuit, à échéance. Rien à ressaisir, rien à
+    oublier.
+  </p>
+
+  <h3 class="titre">Les budgets</h3>
+  <ol class="etapes">
+    <li>
+      <div>
+        <p><strong>Menu « Budgets » &rsaquo; « Nouveau budget ».</strong> Un budget est mensuel ou trimestriel, et porte soit sur une catégorie (le carburant), soit sur l'ensemble des dépenses (budget global).</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <p><strong>Lisez les jauges.</strong> La part dépensée est à l'encre, le reste à dépenser est <em>réglé</em> — hachuré comme du papier vierge. La couleur dit où vous en êtes : <span class="pastille vert">sous le budget</span>, <span class="pastille ocre">seuil atteint</span>, <span class="pastille brique">dépassement</span>.</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <p><strong>Réglez les seuils d'alerte</strong> dans <em>Paramètres</em> (80 % et 100 % par défaut). Le changement s'applique à tous les budgets existants d'un coup.</p>
+      </div>
+    </li>
+  </ol>
+
+  <h3 class="titre">Les exports</h3>
+  <div class="cadre-tableau">
+    <table>
+      <thead>
+        <tr><th>Document</th><th>Format</th><th>Ce qu'il contient</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Journal des dépenses</td>
+          <td>Excel</td>
+          <td>Toutes les lignes de la période avec leur compte SYSCOHADA — le fichier à envoyer au cabinet</td>
+        </tr>
+        <tr>
+          <td>Synthèse mensuelle</td>
+          <td>PDF</td>
+          <td>Le résumé du mois : total, répartition, évolution</td>
+        </tr>
+        <tr>
+          <td>État des notes de frais</td>
+          <td>PDF</td>
+          <td>Ce qui a été remboursé, à qui, sur la période</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p>
+    L'export Excel demande un plan Pro ou Business. Le PDF reste disponible
+    sur tous les plans — <strong>y compris quand l'abonnement est
+    suspendu</strong> : la comptabilité d'une PME lui appartient, Xaalis ne la
+    retient pas en otage.
+  </p>
+</section>
+
+<!-- ============================== 04 ============================== -->
+<section class="feuillet" id="gerant" data-roles="gerant">
+  <span class="mention">04 &middot; Gérant</span>
+  <h2 class="titre">Parcours gérant — décider et piloter</h2>
+  <p>
+    Le gérant peut tout ce que fait le comptable, plus quatre choses que
+    personne d'autre ne peut faire : approuver une note, gérer l'équipe,
+    régler les paramètres, payer l'abonnement.
+  </p>
+
+  <h3 class="titre">La lecture du matin : le tableau de bord</h3>
+  <p>
+    Un seul chiffre est écrit en grand — le <strong>total du mois</strong>.
+    C'est la question qu'on se pose en ouvrant l'application. Autour :
+    l'évolution par rapport au mois précédent, les catégories qui pèsent, les
+    budgets en alerte, les notes en attente de votre signature.
+  </p>
+  <div class="feuille note attention">
+    <p>
+      <strong>Ici, une hausse est rouge.</strong> Xaalis compte des dépenses,
+      pas un chiffre d'affaires : le réflexe « vert = ça monte, tant mieux »
+      vous féliciterait pour un dérapage budgétaire.
+    </p>
+  </div>
+
+  <h3 class="titre">Approuver une note de frais</h3>
+  <ol class="etapes">
+    <li>
+      <div>
+        <p><strong>Le tableau de bord signale les notes en attente</strong>, et un email vous prévient à chaque soumission. Cliquez sur la note.</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <p><strong>Vérifiez ligne par ligne.</strong> Chaque dépense affiche son justificatif : ouvrez-le. C'est le seul moment où la pièce est confrontée au montant.</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <p><strong>Approuvez</strong> — ou <strong>rejetez avec un motif</strong>. Le motif est obligatoire, et il s'affiche à l'employé : « reçu illisible » lui dit quoi faire, « non » ne lui dit rien.</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <p><strong>Payez l'employé hors de Xaalis</strong> (espèces, Wave, virement — comme d'habitude), puis revenez marquer la note <em>Remboursée</em>. Le comptable peut le faire aussi.</p>
+        <p>C'est à ce moment-là, et pas avant, que les dépenses de la note entrent dans le journal de l'entreprise.</p>
+      </div>
+    </li>
+  </ol>
+  <p>
+    Chaque décision est horodatée et nominative. L'historique de la note
+    montre qui a soumis, qui a approuvé, qui a remboursé, et quand.
+  </p>
+
+  <h3 class="titre">L'équipe</h3>
+  <ol class="etapes">
+    <li>
+      <div>
+        <p><strong>Inviter</strong> : l'écran d'invitation s'ouvre depuis le sélecteur d'entreprise, en haut de la barre latérale. Saisissez l'email, la personne reçoit un lien.</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <p><strong>Attribuer le rôle</strong> : tout invité arrive en <em>employé</em>. Passez-le comptable ou gérant depuis la page <em>Équipe</em>. Le changement est immédiat — la personne n'a pas à se reconnecter.</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <p><strong>Retirer quelqu'un</strong> qui quitte l'entreprise : ses dépenses et ses notes restent au journal, sous son nom. On retire un accès, on n'efface pas une histoire comptable.</p>
+      </div>
+    </li>
+  </ol>
+  <div class="feuille note attention">
+    <p>
+      <strong>Le nombre de sièges dépend du plan</strong> : 3 en Starter, 10 en
+      Pro, illimité en Business. Au plafond, l'invitation est refusée. Retirez
+      quelqu'un, ou changez de plan.
+    </p>
+  </div>
+
+  <h3 class="titre">Les paramètres</h3>
+  <p>
+    Deux réglages, tous deux dans <em>Paramètres</em> : les <strong>seuils
+    d'alerte</strong> des budgets, et les <strong>catégories
+    comptables</strong>. Vous pouvez ajouter les vôtres au référentiel
+    SYSCOHADA livré par défaut — gardez le code de compte juste, c'est lui qui
+    voyage dans l'export.
+  </p>
+</section>
+
+<!-- ============================== 05 ============================== -->
+<section class="feuillet" id="editeur" data-roles="editeur">
+  <span class="mention">05 &middot; Éditeur</span>
+  <h2 class="titre">Console éditeur — encaisser et suivre</h2>
+  <div class="feuille note danger">
+    <p>
+      <strong>Ce chapitre ne concerne pas les clients.</strong> La console
+      <span class="code">/editeur</span> est celle d'AFRICATECHNOLOGIE. Pour
+      toute autre personne, l'adresse répond « page introuvable » — il n'y a
+      pas de bouton à trouver, pas de rôle à obtenir.
+    </p>
+  </div>
+
+  <p>
+    Trois vues : <strong>Finances</strong> (les déclarations de paiement en
+    attente), <strong>Entreprises</strong> (abonnement, échéance, effectif),
+    <strong>Utilisateurs</strong>. Tout est en lecture seule sauf un geste :
+    encaisser un paiement.
+  </p>
+
+  <ol class="etapes">
+    <li>
+      <div>
+        <p><strong>Ouvrez la vue Finances.</strong> Chaque ligne en attente porte une référence (<span class="code">XAA-2026-…</span>), l'entreprise, le plan, le montant attendu et l'identifiant de transaction recopié par le client.</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <p><strong>Ouvrez Wave Business à côté</strong> et retrouvez le versement : il porte la référence en motif. C'est le seul fil entre un virement reçu et l'entreprise qui l'a envoyé.</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <p><strong>Retapez le montant que vous lisez sur Wave</strong> dans le champ « montant constaté ». Il n'est jamais pré-rempli, et c'est délibéré : pré-rempli, valider ne serait plus qu'un clic, et un clic ne vérifie rien.</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <p><strong>Encaissez.</strong> Si le montant correspond, l'abonnement s'active et l'échéance est prolongée. Sinon, le paiement est marqué en échec <em>sans</em> rien activer.</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <p><strong>Ou rejetez</strong> une déclaration sans versement correspondant. Dans les deux cas, le journal d'audit enregistre quel éditeur a agi.</p>
+      </div>
+    </li>
+  </ol>
+
+  <div class="feuille note attention">
+    <p>
+      <strong>Un client qui clique n'est pas un client qui a payé.</strong>
+      La déclaration est saisie au clavier par la personne qui a intérêt à
+      l'abonnement. Ne validez jamais avant d'avoir vu le versement dans Wave
+      Business.
+    </p>
+    <p>
+      Ce compte est devenu la clé de l'encaissement :
+      <strong>activez-y l'authentification à deux facteurs</strong>.
+    </p>
+  </div>
+
+  <p>
+    La même opération existe en ligne de commande, pour les cas où la console
+    n'est pas accessible :
+  </p>
+  <div class="feuille">
+    <pre class="bloc-code">npx tsx scripts/valider-paiement.ts liste
+npx tsx scripts/valider-paiement.ts valider XAA-2026-XXXX 30000
+npx tsx scripts/valider-paiement.ts rejeter XAA-2026-XXXX</pre>
+  </div>
+</section>
+
+<!-- ============================== 06 ============================== -->
+<section class="feuillet" id="couleurs" data-roles="employe comptable gerant editeur">
+  <span class="mention">06 &middot; Tout le monde</span>
+  <h2 class="titre">Lire les statuts et les couleurs</h2>
+  <p>
+    Cinq tons, un sens chacun, identiques dans toute l'application. Le statut
+    est <strong>toujours écrit en toutes lettres</strong> : la couleur ne fait
+    que le confirmer, pour que rien ne disparaisse sur un export imprimé en
+    noir et blanc.
+  </p>
+  <div class="cadre-tableau">
+    <table>
+      <thead>
+        <tr><th>Ton</th><th>Sens</th><th>Où vous le croisez</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><span class="pastille neutre">Neutre</span></td><td>Rien d'engagé</td><td>Note en brouillon</td></tr>
+        <tr><td><span class="pastille indigo">Indigo</span></td><td>En cours</td><td>Note soumise, paiement lancé</td></tr>
+        <tr><td><span class="pastille ocre">Ocre</span></td><td>Accepté mais pas soldé, ou seuil atteint</td><td>Note approuvée non remboursée, budget à 80 %, paiement en vérification</td></tr>
+        <tr><td><span class="pastille vert">Vert</span></td><td>Soldé, sous budget</td><td>Note remboursée, abonnement actif</td></tr>
+        <tr><td><span class="pastille brique">Brique</span></td><td>Refusé, impayé, dépassement</td><td>Note rejetée, budget dépassé, abonnement suspendu</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="titre">Deux détails de lecture</h3>
+  <div class="grille">
+    <div class="feuille">
+      <span class="mention">La zone hachurée</span>
+      <p style="margin-top:.5rem">
+        Dans une jauge ou un graphique, la partie <em>réglée</em> (fines
+        lignes) n'est pas « désactivée » : c'est ce qui n'est pas encore
+        écrit. Le reste à dépenser, les mois passés, les catégories mineures.
+      </p>
+      <div class="texture" style="height:2.5rem;border-radius:.4rem;margin-top:.75rem" aria-hidden="true"></div>
+    </div>
+    <div class="feuille">
+      <span class="mention">Cyan et orange</span>
+      <p style="margin-top:.5rem">
+        Le cyan de Wave et l'orange d'Orange Money ne sont jamais du décor :
+        ils signalent un <strong>moyen de paiement</strong>. Dans une liste de
+        dépenses, la couleur d'une ligne désigne sa <strong>catégorie</strong>,
+        rien d'autre — le moyen de paiement, lui, s'écrit en toutes lettres.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== 07 ============================== -->
+<section class="feuillet" id="wave" data-roles="gerant editeur">
+  <span class="mention">07 &middot; Gérant et éditeur</span>
+  <h2 class="titre">Payer son abonnement par Wave</h2>
+  <p>
+    Pas de carte bancaire, pas de prélèvement : Xaalis se règle par Wave, et
+    l'encaissement est confirmé par une personne. En pratique, comptez
+    <strong>quelques heures ouvrées</strong> entre votre versement et
+    l'activation.
+  </p>
+
+  <div class="cadre-tableau">
+    <table>
+      <thead>
+        <tr>
+          <th>Plan</th>
+          <th class="chiffre">Par mois</th>
+          <th class="chiffre">Utilisateurs</th>
+          <th class="chiffre">Dépenses / mois</th>
+          <th class="chiffre">Scans de reçu</th>
+          <th>Notes de frais</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>Starter</strong></td><td class="chiffre">12 500 FCFA</td><td class="chiffre">3</td><td class="chiffre">150</td><td class="chiffre">20</td><td>—</td></tr>
+        <tr><td><strong>Pro</strong></td><td class="chiffre">30 000 FCFA</td><td class="chiffre">10</td><td class="chiffre">illimité</td><td class="chiffre">200</td><td>oui</td></tr>
+        <tr><td><strong>Business</strong></td><td class="chiffre">60 000 FCFA</td><td class="chiffre">illimité</td><td class="chiffre">illimité</td><td class="chiffre">illimité</td><td>oui</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>
+    En annuel, <strong>deux mois sont offerts</strong>. Un renouvellement
+    anticipé s'<em>ajoute</em> à l'échéance en cours, il ne la remplace pas :
+    payer en avance ne fait jamais perdre de jours.
+  </p>
+
+  <h3 class="titre">Côté gérant</h3>
+  <ol class="etapes">
+    <li>
+      <div>
+        <p><strong>Menu « Abonnement », choisissez un plan et un rythme</strong> (mensuel ou annuel). Xaalis ouvre une page de paiement avec une référence unique.</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <p><strong>Notez les deux informations affichées</strong> : le <strong>montant exact</strong> en grand, et la <strong>référence</strong> du type <span class="code">XAA-2026-K7M9</span>. Sa graphie évite les caractères qui se confondent à l'oral (ni I, ni O, ni 0, ni 1) : elle se dicte au téléphone.</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <p><strong>Ouvrez le paiement Wave</strong> depuis le bouton et envoyez le montant exact, <strong>en mettant la référence en motif</strong>. Sans elle, votre versement ne peut pas être rattaché à votre entreprise.</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <p><strong>Revenez sur la page et déclarez votre paiement</strong> en recopiant l'identifiant de transaction figurant sur votre reçu Wave. La page passe en <span class="pastille ocre">Vérification en cours</span>.</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <p><strong>Attendez la confirmation par email.</strong> Vous n'avez plus rien à faire. La référence sert aussi de <strong>numéro de facture</strong>, retrouvable dans <em>Abonnement &rsaquo; Factures</em>.</p>
+      </div>
+    </li>
+  </ol>
+
+  <h3 class="titre">Si l'échéance passe sans paiement</h3>
+  <div class="cadre-tableau">
+    <table>
+      <thead><tr><th>Étape</th><th>Ce qui se passe</th><th>Ce que vous pouvez encore faire</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="pastille ocre">Impayé</span><br><span class="mention">7 jours</span></td>
+          <td>L'échéance est dépassée, le délai de grâce démarre, un email part au gérant</td>
+          <td>Tout, comme avant</td>
+        </tr>
+        <tr>
+          <td><span class="pastille brique">Suspendu</span></td>
+          <td>Le délai de grâce est écoulé : l'application passe en lecture seule</td>
+          <td>Consulter et <strong>exporter en PDF</strong>, indéfiniment. Plus aucune saisie.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p>
+    Un impayé ferme la saisie, jamais le registre. Vos données restent
+    lisibles et exportables, et un paiement rouvre tout en l'état.
+  </p>
+</section>
+
+<!-- ============================== 08 ============================== -->
+<section class="feuillet" id="automatique" data-roles="comptable gerant editeur">
+  <span class="mention">08 &middot; Bon à savoir</span>
+  <h2 class="titre">Ce qui se fait tout seul, la nuit</h2>
+  <p>
+    Trois tâches tournent chaque nuit sans que personne ne les déclenche. Les
+    connaître évite de croire à un bug le lendemain matin.
+  </p>
+  <div class="grille">
+    <div class="feuille">
+      <span class="mention">03 h &middot; Purge</span>
+      <p style="margin-top:.5rem">
+        Efface définitivement les entreprises supprimées depuis plus de
+        <strong>30 jours</strong>. Une suppression coupe l'accès tout de suite
+        mais conserve les données un mois : un registre comptable ne s'efface
+        pas sur un clic malheureux.
+      </p>
+    </div>
+    <div class="feuille">
+      <span class="mention">04 h &middot; Récurrences</span>
+      <p style="margin-top:.5rem">
+        Crée les dépenses récurrentes arrivées à échéance. Le loyer du mois
+        apparaît donc dans le journal du matin, sans intervention.
+      </p>
+    </div>
+    <div class="feuille">
+      <span class="mention">05 h &middot; Échéances</span>
+      <p style="margin-top:.5rem">
+        Passe en impayé les abonnements échus, suspend ceux dont le délai de
+        grâce est écoulé, et prévient les gérants par email.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== 09 ============================== -->
+<section class="feuillet" id="questions" data-roles="employe comptable gerant editeur">
+  <span class="mention">09 &middot; Tout le monde</span>
+  <h2 class="titre">Questions fréquentes</h2>
+
+  <h3 class="titre">« Je ne vois pas le menu Budgets / Rapports / Équipe. »</h3>
+  <p>
+    Votre rôle ne le permet pas. La barre latérale n'affiche que ce à quoi
+    vous avez droit. Demandez au gérant de changer votre rôle depuis
+    <em>Équipe</em>.
+  </p>
+
+  <h3 class="titre">« Le menu Notes de frais est absent alors que je suis gérant. »</h3>
+  <p>
+    C'est le plan, pas le rôle : les notes de frais demandent Pro ou Business.
+    Starter ne les inclut pas.
+  </p>
+
+  <h3 class="titre">« La lecture du reçu ne marche pas. »</h3>
+  <p>
+    Trois causes possibles. <strong>Le quota du mois est atteint</strong>
+    (20 scans en Starter, 200 en Pro) — le compteur ne baisse que si l'analyse
+    a réussi, une panne ne vous coûte rien. <strong>Le fichier dépasse
+    10 Mo</strong> ou n'est ni JPG, PNG, WebP ni PDF. <strong>La photo est
+    illisible</strong> : reprenez-la à plat, bien éclairée, sans ombre en
+    travers. Dans tous les cas la saisie manuelle reste ouverte.
+  </p>
+
+  <h3 class="titre">« J'ai supprimé une dépense par erreur. »</h3>
+  <p>
+    Elle n'est plus à l'écran, mais son contenu intégral est conservé dans le
+    journal d'audit. Contactez le support avec la date et le montant
+    approximatif.
+  </p>
+
+  <h3 class="titre">« L'entreprise a été supprimée par erreur. »</h3>
+  <p>
+    Vous avez <strong>30 jours</strong>. Passé ce délai, la purge de nuit
+    efface définitivement. Écrivez au support tout de suite.
+  </p>
+
+  <h3 class="titre">« J'ai payé mais mon plan n'est pas actif. »</h3>
+  <p>
+    L'activation n'est pas automatique : quelqu'un doit retrouver votre
+    versement dans Wave Business. Comptez quelques heures ouvrées. Si ça
+    dépasse une journée, vérifiez que la <strong>référence était bien en
+    motif</strong> du versement, puis contactez le support avec cette
+    référence.
+  </p>
+
+  <h3 class="titre">« Sur téléphone, où est le menu ? »</h3>
+  <p>
+    En bas de l'écran, sous le pouce. L'entreprise active et votre compte sont
+    en haut. Xaalis s'installe aussi sur l'écran d'accueil (« Ajouter à
+    l'écran d'accueil ») et s'ouvre alors comme une application.
+  </p>
+
+  <h3 class="titre">« L'interface est trop sombre / trop claire. »</h3>
+  <p>
+    La bascule est en bas de la barre latérale, à côté de votre nom (en haut à
+    droite sur téléphone). Le thème sombre est celui par défaut ; le clair
+    existe pour lire dehors, en plein soleil.
+  </p>
+</section>
+
+<!-- ============================== 10 ============================== -->
+<section class="feuillet" id="demo" data-roles="employe comptable gerant editeur">
+  <span class="mention">10 &middot; Pour une démonstration</span>
+  <h2 class="titre">Scénario de démonstration — 20 minutes</h2>
+  <p>
+    L'enchaînement à dérouler devant une PME qui découvre Xaalis. Il raconte
+    une histoire complète : un chauffeur avance de l'argent, le gérant valide,
+    le comptable exporte. Prévoyez <strong>deux comptes</strong> (un gérant,
+    un employé) et <strong>une photo de reçu</strong> sur le téléphone.
+  </p>
+
+  <ol class="etapes">
+    <li>
+      <div>
+        <p><span class="etiquette-role">Préparation</span></p>
+        <p>Une entreprise de démonstration avec une quinzaine de dépenses sur deux mois, deux budgets (un global, un sur le carburant) dont un à 85 % de consommation, et un employé invité. Un tableau de bord vide ne démontre rien.</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <p><span class="etiquette-role">Gérant &middot; 2 min</span></p>
+        <p><strong>Ouvrez le tableau de bord.</strong> Montrez le total du mois en grand, l'évolution contre le mois passé, et le budget carburant déjà en ocre. Le message : « en dix secondes, vous savez où vous en êtes ».</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <p><span class="etiquette-role">Employé &middot; 4 min</span></p>
+        <p><strong>Sur le téléphone</strong>, créez une note de frais, photographiez un vrai reçu, laissez la lecture automatique remplir le montant et le fournisseur. C'est le moment fort : ne le précipitez pas, et <strong>corrigez un champ à la main</strong> devant le public pour montrer que l'humain garde la main.</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <p><span class="etiquette-role">Employé &middot; 1 min</span></p>
+        <p><strong>Soumettez la note.</strong> Faites remarquer qu'elle passe de brouillon à soumise, et qu'un email part aussitôt au gérant.</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <p><span class="etiquette-role">Gérant &middot; 3 min</span></p>
+        <p><strong>Rafraîchissez le tableau de bord</strong> : la note apparaît en attente. Ouvrez-la, ouvrez le justificatif, <strong>rejetez d'abord avec un motif</strong> (« montant illisible »), montrez le motif côté employé, puis corrigez et approuvez. Le rejet fait plus d'effet que l'approbation : c'est lui qui prouve le contrôle interne.</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <p><span class="etiquette-role">Gérant &middot; 1 min</span></p>
+        <p><strong>Marquez la note remboursée</strong>, puis allez montrer la dépense apparue dans le journal de l'entreprise. Le circuit est bouclé.</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <p><span class="etiquette-role">Comptable &middot; 3 min</span></p>
+        <p><strong>Ajoutez une grosse dépense de carburant</strong> pour faire franchir les 100 % au budget : la jauge passe au rouge, l'alerte part. Puis montrez les dépenses récurrentes : « le loyer, vous ne le ressaisirez plus jamais ».</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <p><span class="etiquette-role">Comptable &middot; 3 min</span></p>
+        <p><strong>Téléchargez le journal Excel</strong> et ouvrez-le à l'écran. Les comptes SYSCOHADA visibles dans la colonne sont l'argument qui parle au comptable du cabinet.</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <p><span class="etiquette-role">Gérant &middot; 2 min</span></p>
+        <p><strong>Terminez sur l'abonnement</strong> : les trois plans en FCFA, le paiement par Wave sans carte bancaire, l'essai de 7 jours. Ne déroulez pas le paiement en direct — annoncez simplement le montant et la référence à mettre en motif.</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <p><span class="etiquette-role">Conclusion</span></p>
+        <p>Trois phrases, pas plus : <strong>plus aucun reçu perdu</strong>, <strong>on vous prévient avant le dépassement</strong>, <strong>le bilan sort en un clic</strong>. Puis laissez le téléphone dans les mains du gérant.</p>
+      </div>
+    </li>
+  </ol>
+
+  <div class="feuille note attention">
+    <p>
+      <strong>Deux écueils.</strong> Ne démontrez jamais la lecture
+      automatique sur un reçu froissé ou photographié dans l'ombre — testez le
+      vôtre avant. Et ne promettez pas les alertes SMS : à ce jour, seules les
+      alertes <strong>email</strong> sont livrées.
+    </p>
+  </div>
+</section>
+
+<footer class="pied">
+  <p class="mention">AFRICATECHNOLOGIE / E-DEV — Saint-Louis / Dakar</p>
+  <p>
+    Support : africatechnologie9@gmail.com &middot; +221 76 843 12 63<br>
+    Ce guide décrit Xaalis version 1. Le détail technique et les décisions
+    d'architecture vivent dans <span class="code">PROJET.md</span>.
+  </p>
+</footer>
+
+</div>
+
+<script>
+/* Filtre par profil : masque les chapitres qui ne concernent pas le lecteur.
+   Un guide où chacun ne lit que son parcours est un guide qu'on lit. */
+(function () {
+  var boutons = document.querySelectorAll(".filtre button");
+  var sections = document.querySelectorAll("section.feuillet[data-roles]");
+
+  function appliquer(role) {
+    sections.forEach(function (section) {
+      var roles = section.getAttribute("data-roles").split(" ");
+      section.hidden = !(role === "tous" || roles.indexOf(role) !== -1);
+    });
+    boutons.forEach(function (bouton) {
+      bouton.setAttribute(
+        "aria-pressed",
+        String(bouton.getAttribute("data-role") === role)
+      );
+    });
+  }
+
+  boutons.forEach(function (bouton) {
+    bouton.addEventListener("click", function () {
+      appliquer(bouton.getAttribute("data-role"));
+    });
+  });
+
+  /* Un lien du sommaire vers un chapitre masqué le réaffiche d'abord. */
+  document.querySelectorAll('nav.sommaire a[href^="#"]').forEach(function (lien) {
+    lien.addEventListener("click", function () {
+      var cible = document.querySelector(lien.getAttribute("href"));
+      if (cible && cible.hidden) appliquer("tous");
+    });
+  });
+})();
+</script>

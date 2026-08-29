@@ -6,18 +6,28 @@
 -- n'a pas posé `app.organization_id` renvoie ZÉRO ligne — l'application
 -- semblera vide plutôt que cassée, ce qui est bien pire à diagnostiquer.
 --
--- `current_setting(…, true)` renvoie NULL si la variable est absente, et
--- `colonne = NULL` n'est jamais vrai : l'absence de contexte refuse tout.
--- C'est le bon défaut — on ferme, on n'ouvre pas.
+-- `current_setting(…, true)` renvoie NULL si la variable n'a jamais été posée,
+-- et `colonne = NULL` n'est jamais vrai : l'absence de contexte refuse tout.
+--
+-- Nuance constatée le 16 août 2026 sur le pooler Supabase : une connexion qui a
+-- DÉJÀ servi une requête portée ne revient pas à NULL en fin de transaction,
+-- elle revient à la CHAÎNE VIDE. Le refus tient quand même — aucun
+-- organizationId ne vaut '' — mais il ne faut pas compter sur `IS NULL` pour
+-- détecter l'absence de contexte. Dans les deux cas : on ferme, on n'ouvre pas.
 -- ============================================================
 
--- ── Les onze tables qui portent organizationId ──────────────
+-- ── Les dix tables qui portent organizationId ───────────────
+-- `Approval` n'en fait PAS partie, contrairement à ce que ce fichier a cru
+-- jusqu'au 16 août 2026 : la colonne n'existe pas dans son modèle, et la
+-- boucle ci-dessous échouait donc en bloc sur « column organizationId does not
+-- exist ». Elle est traitée plus bas, avec Receipt, par une policy qui remonte
+-- la relation.
 DO $$
 DECLARE
   t text;
   tables text[] := ARRAY[
     'Membership', 'Category', 'Expense', 'RecurringExpense', 'Budget',
-    'ExpenseReport', 'Approval', 'Subscription', 'Payment', 'OcrUsage',
+    'ExpenseReport', 'Subscription', 'Payment', 'OcrUsage',
     'AuditLog'
   ];
 BEGIN
@@ -67,6 +77,28 @@ CREATE POLICY isolation_entreprise ON "Receipt"
       SELECT 1 FROM "Expense" e
       WHERE e.id = "Receipt"."expenseId"
         AND e."organizationId" = current_setting('app.organization_id', true)
+    )
+  );
+
+-- ── Approval : la seconde table sans organizationId ──────────
+-- Une décision d'approbation appartient à une note de frais, et tient sa
+-- portée d'elle — même raisonnement que Receipt ci-dessus.
+ALTER TABLE "Approval" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "Approval" FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS isolation_entreprise ON "Approval";
+CREATE POLICY isolation_entreprise ON "Approval"
+  USING (
+    EXISTS (
+      SELECT 1 FROM "ExpenseReport" r
+      WHERE r.id = "Approval"."reportId"
+        AND r."organizationId" = current_setting('app.organization_id', true)
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM "ExpenseReport" r
+      WHERE r.id = "Approval"."reportId"
+        AND r."organizationId" = current_setting('app.organization_id', true)
     )
   );
 

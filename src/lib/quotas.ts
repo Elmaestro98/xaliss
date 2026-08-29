@@ -4,7 +4,7 @@ import type { SubscriptionPlan } from "@/generated/prisma/enums";
 import { AbonnementError } from "@/lib/abonnement";
 import { periodeCourante } from "@/lib/periode";
 import { formatQuota, PLANS, quotaDepasse } from "@/lib/plans";
-import { prisma } from "@/lib/prisma";
+import { prismaPourOrg } from "@/lib/prisma";
 
 /**
  * Quotas mensuels — PROJET.md §11.
@@ -23,7 +23,7 @@ async function consommationDepenses(
   maintenant = new Date(),
 ): Promise<number> {
   const { debut } = periodeCourante(maintenant);
-  return prisma.expense.count({
+  return prismaPourOrg(organizationId).expense.count({
     where: { organizationId, createdAt: { gte: debut } },
   });
 }
@@ -33,7 +33,7 @@ async function consommationOcr(
   maintenant = new Date(),
 ): Promise<number> {
   const { debut } = periodeCourante(maintenant);
-  return prisma.ocrUsage.count({
+  return prismaPourOrg(organizationId).ocrUsage.count({
     where: { organizationId, createdAt: { gte: debut } },
   });
 }
@@ -83,7 +83,7 @@ export async function enregistrerUsageOcr(params: {
   organizationId: string;
   userId: string;
 }): Promise<void> {
-  await prisma.ocrUsage.create({
+  await prismaPourOrg(params.organizationId).ocrUsage.create({
     data: { organizationId: params.organizationId, userId: params.userId },
   });
 }

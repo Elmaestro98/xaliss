@@ -16,7 +16,7 @@ import {
   type Fonctionnalite,
   planPermet,
 } from "@/lib/plans";
-import { prisma } from "@/lib/prisma";
+import { prismaPourOrg } from "@/lib/prisma";
 
 /**
  * Cycle de vie de l'abonnement — PROJET.md §9 et §11.
@@ -155,12 +155,12 @@ export function estEnLectureSeule(etat: EtatAbonnement): boolean {
 export async function getAbonnement(
   organizationId: string,
 ): Promise<Subscription> {
-  const existant = await prisma.subscription.findUnique({
+  const existant = await prismaPourOrg(organizationId).subscription.findUnique({
     where: { organizationId },
   });
   if (existant) return existant;
 
-  return prisma.subscription.upsert({
+  return prismaPourOrg(organizationId).subscription.upsert({
     where: { organizationId },
     create: {
       organizationId,
@@ -285,6 +285,14 @@ const LIBELLES_FONCTIONNALITE: Record<Fonctionnalite, string> = {
  */
 export async function activerApresPaiement(params: {
   subscriptionId: string;
+  /**
+   * L'entreprise concernée. Redondante avec `subscriptionId` — un abonnement
+   * n'appartient qu'à une entreprise — mais les policies RLS ne peuvent pas le
+   * déduire : elles comparent une colonne à une variable de session, elles ne
+   * remontent pas une relation. Et cette fonction est appelée depuis la console
+   * éditeur, où aucune session Clerk ne porte d'entreprise.
+   */
+  organizationId: string;
   plan: SubscriptionPlan;
   cycle: BillingCycle;
   provider: Subscription["provider"];
@@ -295,7 +303,7 @@ export async function activerApresPaiement(params: {
   const depart =
     params.echeanceActuelle > maintenant ? params.echeanceActuelle : maintenant;
 
-  return prisma.subscription.update({
+  return prismaPourOrg(params.organizationId).subscription.update({
     where: { id: params.subscriptionId },
     data: {
       plan: params.plan,
@@ -308,12 +316,19 @@ export async function activerApresPaiement(params: {
   });
 }
 
-/** Échéance atteinte sans paiement : le délai de grâce démarre. */
+/**
+ * Échéance atteinte sans paiement : le délai de grâce démarre.
+ *
+ * `organizationId` accompagne l'identifiant d'abonnement pour la même raison
+ * que dans `activerApresPaiement` : l'appelant est le cron d'échéance, qui n'a
+ * aucune session Clerk d'où déduire l'entreprise.
+ */
 export async function marquerImpaye(
   subscriptionId: string,
+  organizationId: string,
   maintenant = new Date(),
 ): Promise<Subscription> {
-  return prisma.subscription.update({
+  return prismaPourOrg(organizationId).subscription.update({
     where: { id: subscriptionId },
     data: {
       status: SubscriptionStatus.PAST_DUE,
@@ -325,8 +340,9 @@ export async function marquerImpaye(
 /** Délai de grâce écoulé : passage en lecture seule. */
 export async function suspendre(
   subscriptionId: string,
+  organizationId: string,
 ): Promise<Subscription> {
-  return prisma.subscription.update({
+  return prismaPourOrg(organizationId).subscription.update({
     where: { id: subscriptionId },
     data: { status: SubscriptionStatus.SUSPENDED },
   });

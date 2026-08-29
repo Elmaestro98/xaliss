@@ -6,7 +6,7 @@ import { envoyerEmail } from "@/lib/email";
 import { formatFCFA } from "@/lib/format";
 import { dansLeJournal } from "@/lib/journal";
 import { periodeBudget } from "@/lib/periode";
-import { prisma } from "@/lib/prisma";
+import { prismaPourOrg } from "@/lib/prisma";
 
 /**
  * Alertes budget à 80 % et 100 % — PROJET.md §4.2 et §9.
@@ -25,10 +25,14 @@ export async function verifierAlertesBudget(params: {
   montant: number;
   dateDepense: Date;
 }): Promise<void> {
+  // Portée explicite : cette fonction est aussi appelée par le cron des
+  // récurrences, qui n'a pas de session Clerk pour la déduire.
+  const db = prismaPourOrg(params.organizationId);
+
   try {
     // Un budget de catégorie + un budget global peuvent tous deux être
     // concernés par la même dépense.
-    const budgets = await prisma.budget.findMany({
+    const budgets = await db.budget.findMany({
       where: {
         organizationId: params.organizationId,
         OR: [{ categoryId: params.categoryId }, { categoryId: null }],
@@ -48,7 +52,7 @@ export async function verifierAlertesBudget(params: {
         continue;
       }
 
-      const somme = await prisma.expense.aggregate({
+      const somme = await db.expense.aggregate({
         where: {
           organizationId: params.organizationId,
           date: { gte: periode.debut, lte: periode.fin },
@@ -94,7 +98,7 @@ async function envoyerAlerte(params: {
 }): Promise<void> {
   // Destinataires : gérant + comptable (PROJET.md §9). Les rôles vivent chez
   // nous, les adresses email chez Clerk.
-  const adhesions = await prisma.membership.findMany({
+  const adhesions = await prismaPourOrg(params.organizationId).membership.findMany({
     where: {
       organizationId: params.organizationId,
       role: { in: [Role.ADMIN, Role.COMPTABLE] },

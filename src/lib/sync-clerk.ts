@@ -4,7 +4,7 @@ import { Role } from "@/generated/prisma/enums";
 import { appliquerLimiteSieges, dateFinEssai } from "@/lib/abonnement";
 import { DEFAULT_CATEGORIES } from "@/lib/categories";
 import { PLAN_PAR_DEFAUT } from "@/lib/plans";
-import { prisma } from "@/lib/prisma";
+import { prismaPourOrg } from "@/lib/prisma";
 
 /**
  * Miroir de Clerk dans notre base.
@@ -43,7 +43,7 @@ export type InfosOrganisation = {
  * TRIALING est la valeur par défaut du schéma.
  */
 export async function synchroniserOrganisation(org: InfosOrganisation) {
-  const organisation = await prisma.organization.upsert({
+  const organisation = await prismaPourOrg(org.id).organization.upsert({
     where: { id: org.id },
     create: {
       id: org.id,
@@ -84,7 +84,7 @@ export async function synchroniserAdhesion(params: {
   organizationId: string;
   clerkOrgRole?: string | null;
 }) {
-  return prisma.membership.upsert({
+  return prismaPourOrg(params.organizationId).membership.upsert({
     where: {
       userId_organizationId: {
         userId: params.userId,
@@ -103,7 +103,7 @@ export async function synchroniserAdhesion(params: {
 
 /** Début du délai de grâce : l'entreprise devient aussitôt inaccessible. */
 export async function marquerOrganisationSupprimee(organizationId: string) {
-  return prisma.organization.updateMany({
+  return prismaPourOrg(organizationId).organization.updateMany({
     where: { id: organizationId, deletedAt: null },
     data: { deletedAt: new Date() },
   });
@@ -113,7 +113,7 @@ export async function retirerAdhesion(params: {
   userId: string;
   organizationId: string;
 }) {
-  return prisma.membership.deleteMany({
+  return prismaPourOrg(params.organizationId).membership.deleteMany({
     where: { userId: params.userId, organizationId: params.organizationId },
   });
 }

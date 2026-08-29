@@ -14,7 +14,7 @@ import { verifierAlertesBudget } from "@/lib/alertes-budget";
 import { SchemaExtractionRecu } from "@/lib/ocr";
 import { assertCan } from "@/lib/permissions";
 import { assertQuotaDepenses } from "@/lib/quotas";
-import { prisma } from "@/lib/prisma";
+import { prisma, transactionPortee } from "@/lib/prisma";
 import { SchemaDepense } from "@/lib/schema-depense";
 import { requireSession } from "@/lib/session";
 import {
@@ -161,7 +161,7 @@ export async function creerDepense(
   try {
     // Tout ou rien : une dépense sans sa ligne d'audit, ou un justificatif
     // sans sa dépense, seraient des états incohérents.
-    await prisma.$transaction(async (tx) => {
+    await transactionPortee(session.organizationId, async (tx) => {
       const depense = await tx.expense.create({
         data: {
           ...resultat.data,
@@ -327,7 +327,7 @@ export async function modifierDepense(
   }
 
   try {
-    await prisma.$transaction(async (tx) => {
+    await transactionPortee(session.organizationId, async (tx) => {
       await tx.expense.update({
         where: { id: existante.id },
         data: resultat.data,
@@ -431,7 +431,7 @@ export async function supprimerDepense(id: string): Promise<void> {
   const depense = await depenseCorrigible(id, session.organizationId);
   if (!depense) redirect("/depenses");
 
-  await prisma.$transaction(async (tx) => {
+  await transactionPortee(session.organizationId, async (tx) => {
     // Les Receipt partent en cascade (schema.prisma) ; les fichiers du
     // bucket, eux, n'ont aucune cascade — c'est la boucle ci-dessous.
     await tx.expense.delete({ where: { id: depense.id } });

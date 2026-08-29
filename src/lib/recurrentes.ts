@@ -3,7 +3,11 @@ import "server-only";
 import * as z from "zod";
 import { PaymentMethod } from "@/generated/prisma/enums";
 import { verifierAlertesBudget } from "@/lib/alertes-budget";
-import { prisma, prismaHorsPortee } from "@/lib/prisma";
+import {
+  prismaHorsPortee,
+  prismaPourOrg,
+  transactionPortee,
+} from "@/lib/prisma";
 
 /**
  * Dépenses récurrentes — PROJET.md §4.1 : « loyer, abonnements, générées
@@ -82,10 +86,15 @@ export async function genererDepensesEchues(): Promise<{
       continue;
     }
 
+    // Portée explicite : un cron n'a pas de session Clerk pour dire à
+    // PostgreSQL de quelle entreprise il s'agit. Elle vient donc de la
+    // récurrence en cours de traitement.
+    const db = prismaPourOrg(recurrence.organizationId);
+
     // La catégorie peut avoir disparu depuis la mise en place : dans ce cas
     // la récurrence est ignorée aujourd'hui, l'interface permettra de la
     // corriger — générer une dépense sans catégorie casserait le journal.
-    const categorie = await prisma.category.findFirst({
+    const categorie = await db.category.findFirst({
       where: {
         id: gabarit.data.categoryId,
         organizationId: recurrence.organizationId,
@@ -104,7 +113,7 @@ export async function genererDepensesEchues(): Promise<{
 
     // Une transaction par récurrence : si l'une échoue, les autres
     // entreprises reçoivent quand même leurs dépenses du jour.
-    await prisma.$transaction(async (tx) => {
+    await transactionPortee(recurrence.organizationId, async (tx) => {
       while (echeance <= maintenant) {
         const depense = await tx.expense.create({
           data: {

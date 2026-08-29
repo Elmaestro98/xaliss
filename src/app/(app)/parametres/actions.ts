@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import * as z from "zod";
 import { seuilsDepuisAlerte } from "@/lib/parametres";
 import { assertCan } from "@/lib/permissions";
-import { prisma } from "@/lib/prisma";
+import { prisma, transactionPortee } from "@/lib/prisma";
 import { requireSession } from "@/lib/session";
 
 export type EtatFormulaire = {
@@ -247,16 +247,16 @@ export async function enregistrerSeuilAlerte(
 
   // Atomique : le défaut de l'entreprise et les budgets existants ne doivent
   // jamais diverger. settings ne porte que ce réglage pour l'instant.
-  await prisma.$transaction([
-    prisma.organization.update({
+  await transactionPortee(session.organizationId, async (tx) => {
+    await tx.organization.update({
       where: { id: session.organizationId },
       data: { settings: { alertThresholds: seuils } },
-    }),
-    prisma.budget.updateMany({
+    });
+    await tx.budget.updateMany({
       where: { organizationId: session.organizationId },
       data: { alertThresholds: seuils },
-    }),
-  ]);
+    });
+  });
 
   await prisma.auditLog.create({
     data: {

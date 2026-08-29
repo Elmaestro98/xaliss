@@ -525,7 +525,7 @@ Paiement par **lien Wave à montant libre**, encaissement validé à la main :
 | Exports                 | PDF         | Excel + PDF      | Excel + PDF              |
 | Support                 | Email       | Email + WhatsApp | Prioritaire + onboarding |
 
-Essai gratuit **14 jours** • Paiement annuel : **2 mois offerts** • Les limites de plan sont vérifiées côté serveur.
+Essai gratuit **7 jours** • Paiement annuel : **2 mois offerts** • Les limites de plan sont vérifiées côté serveur.
 
 **Où vivent ces règles** : le catalogue (tarifs, quotas, fonctionnalités) est dans
 `lib/plans.ts`, les compteurs mensuels dans `lib/quotas.ts`. À ne pas confondre avec
@@ -578,7 +578,7 @@ Vérifiée seulement chez nous, elle ne serait qu'un affichage.
 | 4     | OCR + Budgets & alertes email                                  | 2 sem   | ✅ OCR Gemini (`/api/ocr`), budgets par catégorie ou globaux, jauges, seuils configurables, alertes email Resend                                                                                              |
 | 5     | Notes de frais : workflow + notifications email/SMS            | 2 sem   | 🟡 Workflow complet (soumettre, approuver, rejeter avec motif, corriger, rembourser), `Approval` + `AuditLog`, entrée au journal au remboursement, notifications **email** — **reste : les SMS (Orange)**     |
 | 6     | Dashboard, rapports, exports Excel/PDF                         | 1,5 sem | ✅ Dashboard (total du mois, évolution vs M-1, top catégories, notes en attente), graphiques recharts, exports journal (Excel), synthèse et notes de frais (PDF)                                              |
-| 7     | Abonnements Wave, facturation                                  | 1,5 sem | ✅ Essai 14 jours, plans et quotas vérifiés côté serveur, page Abonnement + factures, paiement par **lien Wave** (déclaration du client puis validation manuelle de l'éditeur), cron d'échéance et suspension en lecture seule. Orange Money et l'API Checkout reportés en V2. |
+| 7     | Abonnements Wave, facturation                                  | 1,5 sem | ✅ Essai 7 jours (14 jusqu'au 16 août 2026), plans et quotas vérifiés côté serveur, page Abonnement + factures, paiement par **lien Wave** (déclaration du client puis validation manuelle de l'éditeur), cron d'échéance et suspension en lecture seule. Orange Money et l'API Checkout reportés en V2. |
 | 8     | Landing page, tests, audit sécurité, production 🚀             | 1,5 sem | 🟡 Direction visuelle « le cahier, la nuit » appliquée à toute l'application (§6) + **landing page** (héros, constats, 4 modules, ancrage local, grille tarifaire lue dans `lib/plans.ts`, pied de page) — **reste : les tests, l'audit sécurité et la mise en production** |
 
 **Bêta** : 5–10 PME pilotes (Saint-Louis / Dakar) dès la phase 6.

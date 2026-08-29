@@ -14,7 +14,7 @@ import {
   getAbonnement,
 } from "@/lib/abonnement";
 import { prixPour } from "@/lib/plans";
-import { prisma, prismaHorsPortee } from "@/lib/prisma";
+import { prismaHorsPortee, prismaPourOrg } from "@/lib/prisma";
 
 /**
  * Facturation des abonnements — PROJET.md §9.
@@ -63,7 +63,7 @@ export async function lancerPaiement(params: {
 }): Promise<Payment> {
   const abonnement = await getAbonnement(params.organizationId);
 
-  return prisma.payment.create({
+  return prismaPourOrg(params.organizationId).payment.create({
     data: {
       organizationId: params.organizationId,
       subscriptionId: abonnement.id,
@@ -96,11 +96,15 @@ export async function declarerPaiement(params: {
   reference: string;
   transactionId: string;
 }): Promise<ResultatDeclaration> {
-  const paiement = await prisma.payment.findUnique({
+  const db = prismaPourOrg(params.organizationId);
+
+  const paiement = await db.payment.findUnique({
     where: { reference: params.reference },
   });
   // L'appartenance se vérifie ici aussi : la référence circule dans une URL,
-  // et rien n'empêche de coller celle d'une autre entreprise.
+  // et rien n'empêche de coller celle d'une autre entreprise. Le RLS refusera
+  // la ligne de son côté une fois actif ; on garde ce test parce qu'il dit
+  // l'intention, et parce qu'il protège même policies désactivées.
   if (!paiement || paiement.organizationId !== params.organizationId) {
     return { type: "introuvable" };
   }
@@ -108,7 +112,7 @@ export async function declarerPaiement(params: {
     return { type: "deja-encaisse" };
   }
 
-  await prisma.payment.update({
+  await db.payment.update({
     where: { id: paiement.id },
     data: {
       status: PaymentStatus.AWAITING_VERIFICATION,
@@ -116,7 +120,7 @@ export async function declarerPaiement(params: {
     },
   });
 
-  await prisma.auditLog.create({
+  await db.auditLog.create({
     data: {
       organizationId: paiement.organizationId,
       actorId: `client:${paiement.organizationId}`,
@@ -191,14 +195,24 @@ export async function encaisserPaiement(params: {
    */
   actorId?: string;
 }): Promise<ResultatEncaissement> {
-  const paiement = await prisma.payment.findUnique({
+  /*
+   * La recherche est transverse, la suite ne l'est pas.
+   *
+   * L'appelant — console éditeur ou scripts/valider-paiement.ts — ne connaît
+   * qu'une référence dictée au téléphone. Il ne sait PAS de quelle entreprise
+   * elle vient : c'est justement ce que cette requête lui apprend. Une fois
+   * l'entreprise connue, tout le reste se porte sur elle.
+   */
+  const paiement = await prismaHorsPortee.payment.findUnique({
     where: { reference: params.reference },
   });
   if (!paiement) return { type: "introuvable" };
   if (paiement.status === PaymentStatus.SUCCEEDED) return { type: "deja-traite" };
 
+  const db = prismaPourOrg(paiement.organizationId);
+
   if (params.montantRecu !== undefined && params.montantRecu !== paiement.amount) {
-    await prisma.payment.update({
+    await db.payment.update({
       where: { id: paiement.id },
       data: { status: PaymentStatus.FAILED },
     });
@@ -210,12 +224,12 @@ export async function encaisserPaiement(params: {
   }
 
   const maintenant = params.maintenant ?? new Date();
-  const abonnement = await prisma.subscription.findUnique({
+  const abonnement = await db.subscription.findUnique({
     where: { id: paiement.subscriptionId },
   });
   if (!abonnement) return { type: "introuvable" };
 
-  await prisma.payment.update({
+  await db.payment.update({
     where: { id: paiement.id },
     data: {
       status: PaymentStatus.SUCCEEDED,
@@ -229,6 +243,7 @@ export async function encaisserPaiement(params: {
 
   await activerApresPaiement({
     subscriptionId: abonnement.id,
+    organizationId: paiement.organizationId,
     plan: paiement.plan,
     cycle: paiement.billingCycle,
     provider: paiement.provider,
@@ -240,7 +255,7 @@ export async function encaisserPaiement(params: {
   // savoir, c'est lui qui tient l'écran d'invitation.
   await appliquerLimiteSieges(paiement.organizationId, paiement.plan);
 
-  await prisma.auditLog.create({
+  await db.auditLog.create({
     data: {
       organizationId: paiement.organizationId,
       // Aucun utilisateur de l'entreprise n'agit ici : c'est l'éditeur qui

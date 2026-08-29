@@ -4,7 +4,7 @@ import { cache } from "react";
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { Role } from "@/generated/prisma/enums";
-import { prisma } from "@/lib/prisma";
+import { prismaPourOrg } from "@/lib/prisma";
 import { synchroniserAdhesion, synchroniserOrganisation } from "@/lib/sync-clerk";
 
 export type Session = {
@@ -64,7 +64,10 @@ const resoudreSession = cache(async (): Promise<Resolution> => {
   const { userId, orgId, orgRole } = await auth();
   if (!userId || !orgId) return { type: "anonyme" };
 
-  const adhesion = await prisma.membership.findUnique({
+  // Portée dite à la main alors qu'une session existe : `prisma` la
+  // redemanderait à Clerk pour rien, et surtout c'est ICI que la session se
+  // résout — s'appuyer sur elle avant qu'elle n'existe serait circulaire.
+  const adhesion = await prismaPourOrg(orgId).membership.findUnique({
     where: { userId_organizationId: { userId, organizationId: orgId } },
     include: { organization: { select: { name: true, deletedAt: true } } },
   });

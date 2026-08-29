@@ -77,7 +77,16 @@ export const PLANS_ORDONNES: readonly Plan[] = [
 /** Le plan proposé par défaut, et celui de l'essai gratuit. */
 export const PLAN_PAR_DEFAUT = SubscriptionPlan.PRO;
 
-export const JOURS_ESSAI = 14;
+/**
+ * Durée de l'essai gratuit — ramenée de 14 à 7 jours le 16 août 2026.
+ *
+ * Ne vaut que pour les essais qui DÉMARRENT après ce changement : la date de
+ * fin est figée dans `Subscription.currentPeriodEnd` au moment où l'entreprise
+ * est créée (lib/sync-clerk.ts). Les essais déjà ouverts gardent leurs 14
+ * jours, et c'est le bon comportement — raccourcir un essai en cours reviendrait
+ * à changer les règles pendant la partie.
+ */
+export const JOURS_ESSAI = 7;
 
 /** Après un paiement manqué, avant le passage en lecture seule (PROJET.md §9). */
 export const JOURS_DE_GRACE = 7;

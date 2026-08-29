@@ -1,6 +1,6 @@
 import "server-only";
 
-import { prisma, prismaHorsPortee } from "@/lib/prisma";
+import { prismaHorsPortee, prismaPourOrg } from "@/lib/prisma";
 
 /** Délai de grâce avant effacement définitif — cohérent avec PROJET.md §10. */
 export const JOURS_DE_GRACE = 30;
@@ -25,7 +25,11 @@ export async function purgerOrganisationsExpirees() {
   });
 
   for (const org of expirees) {
-    await prisma.organization.delete({ where: { id: org.id } });
+    // Portée sur l'entreprise qu'on efface, une par une : la recherche est
+    // transverse, l'effacement ne l'est pas. Les lignes filles partent en
+    // cascade — PostgreSQL exécute l'intégrité référentielle sans repasser par
+    // les policies, il n'y a donc rien de plus à porter.
+    await prismaPourOrg(org.id).organization.delete({ where: { id: org.id } });
   }
 
   return expirees;

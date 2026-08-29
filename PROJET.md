@@ -577,12 +577,11 @@ Vérifiée seulement chez nous, elle ne serait qu'un affichage.
 > Avant cela : bascule de l'API Wave Checkout vers un **lien de paiement Wave**,
 > migration `20260814090000_paiement_lien_wave` appliquée — l'API, le webhook
 > signé et le mode simulation supprimés, l'activation est manuelle.
-> Les phases 2, 3, 4, 6 et 7 sont faites. Deux dettes traînent derrière :
-> **RLS** (phase 1) et **SMS** (phase 5).
+> Les phases 2, 3, 4, 6 et 7 sont faites. Deux dettes traînaient derrière :
+> **RLS** (phase 1, close pour le développement — production restante) et
+> **SMS** (phase 5, toujours ouverte).
 >
-> ⚠️ Rien n'est encore déployé, et **toute la phase 7 plus la refonte visuelle
-> ne sont pas commitées**. Le dépôt en est à deux commits (`846a8e1 okprojet`),
-> qui ne contiennent ni les abonnements ni le nouveau système visuel.
+> ⚠️ Rien n'est encore déployé.
 
 | Phase | Contenu                                                        | Durée   | Statut                                                                                                                                                                                                       |
 | ----- | -------------------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

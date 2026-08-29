@@ -21,6 +21,39 @@ import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/session";
 
+/**
+ * Les noms des employés, qui vivent chez Clerk et non en base (Membership ne
+ * porte qu'un identifiant — PROJET.md §7).
+ *
+ * On demande les membres de l'ENTREPRISE plutôt que les utilisateurs nommés
+ * par le groupBy : cette liste-là ne dépend d'aucun résultat de la base, elle
+ * peut donc partir en même temps que les requêtes au lieu d'attendre son tour.
+ * Le journal (`/depenses`) résout déjà les noms de cette façon.
+ *
+ * Contrepartie assumée : quelqu'un qui a quitté l'entreprise après avoir saisi
+ * une dépense ce mois-ci s'affiche « — » au lieu de son nom. Le montant, lui,
+ * reste compté — c'est ce qui importe au gérant qui lit le total du mois.
+ */
+async function nomsDesMembres(organizationId: string) {
+  const client = await clerkClient();
+  const { data } = await client.organizations.getOrganizationMembershipList({
+    organizationId,
+    limit: 100,
+  });
+
+  return new Map(
+    data.flatMap((adhesion) => {
+      const profil = adhesion.publicUserData;
+      if (!profil?.userId) return [];
+      const nom =
+        [profil.firstName, profil.lastName].filter(Boolean).join(" ") ||
+        profil.identifier ||
+        "—";
+      return [[profil.userId, nom] as [string, string]];
+    }),
+  );
+}
+
 export default async function DashboardPage() {
   const session = await requireSession();
   const vueComplete = can(session.role, "dashboard:full");
@@ -38,12 +71,35 @@ export default async function DashboardPage() {
     ...dansLeJournal(),
   };
 
+  // Graphiques (PROJET.md §4.4). Même périmètre et mêmes règles de journal que
+  // le total : évolution sur 6 mois, puis répartitions du mois courant.
+  const mois6 = derniersMois(6, maintenant);
+
+  /*
+   * UNE seule vague, et c'est de la latence, pas de l'élégance.
+   *
+   * Chaque requête portée est une TRANSACTION : quatre allers-retours vers la
+   * base (BEGIN, set_config, la requête, COMMIT — voir lib/prisma.ts). Des
+   * requêtes lancées ensemble paient ce prix EN PARALLÈLE et ne le paient donc
+   * qu'une fois ; une seconde vague qui attend la première le paie une seconde
+   * fois. Le dashboard en comptait quatre — seize allers-retours en série, soit
+   * près de trois secondes sur un lien Dakar-Francfort.
+   *
+   * D'où deux requêtes volontairement « trop larges » ci-dessous — toutes les
+   * catégories, tous les membres. Ramener quelques dizaines de lignes inutiles
+   * coûte bien moins cher qu'un aller-retour de plus.
+   */
   const [
     depensesEnTout,
     sommeCourante,
     sommePrecedente,
     parCategorie,
     notesEnAttente,
+    categories,
+    totauxMensuels,
+    parMoyen,
+    parEmploye,
+    membres,
   ] = await Promise.all([
     prisma.expense.count({ where: perimetre }),
     prisma.expense.aggregate({
@@ -72,40 +128,13 @@ export default async function DashboardPage() {
         ...(vueComplete ? {} : { employeeId: session.userId }),
       },
     }),
-  ]);
-
-  const total = sommeCourante._sum.amount ?? 0;
-  const totalPrecedent = sommePrecedente._sum.amount ?? 0;
-  const variation = evolution(total, totalPrecedent);
-
-  // Les identifiants viennent d'un groupBy déjà porté : filtrer à nouveau sur
-  // l'entreprise est redondant AUJOURD'HUI. On le fait quand même, parce que
-  // cette redondance est ce qui sépare une requête juste par construction
-  // d'une requête juste par raisonnement — et le raisonnement ne survit pas
-  // à la prochaine modification de `perimetre`.
-  const categories = await prisma.category.findMany({
-    where: {
-      organizationId: session.organizationId,
-      id: { in: parCategorie.map((c) => c.categoryId) },
-    },
-    select: { id: true, name: true, codeSyscohada: true, color: true },
-  });
-
-  const segments = parCategorie.map((ligne) => {
-    const categorie = categories.find((c) => c.id === ligne.categoryId);
-    return {
-      id: ligne.categoryId,
-      nom: categorie?.name ?? "Sans catégorie",
-      code: categorie?.codeSyscohada ?? null,
-      couleur: categorie?.color ?? "var(--cat-8)",
-      montant: ligne._sum.amount ?? 0,
-    };
-  });
-
-  // Graphiques (PROJET.md §4.4). Même périmètre et mêmes règles de journal que
-  // le total : évolution sur 6 mois, puis répartitions du mois courant.
-  const mois6 = derniersMois(6, maintenant);
-  const [totauxMensuels, parMoyen, parEmploye] = await Promise.all([
+    // Toutes les catégories de l'entreprise, et non les seules cinq du
+    // groupBy : ne dépendre d'aucun autre résultat est ce qui permet à cette
+    // requête de partir avec les autres. Une PME en compte quelques dizaines.
+    prisma.category.findMany({
+      where: { organizationId: session.organizationId },
+      select: { id: true, name: true, codeSyscohada: true, color: true },
+    }),
     Promise.all(
       mois6.map((m) =>
         prisma.expense.aggregate({
@@ -133,7 +162,25 @@ export default async function DashboardPage() {
           take: 6,
         })
       : Promise.resolve([]),
+    vueComplete
+      ? nomsDesMembres(session.organizationId)
+      : Promise.resolve(new Map<string, string>()),
   ]);
+
+  const total = sommeCourante._sum.amount ?? 0;
+  const totalPrecedent = sommePrecedente._sum.amount ?? 0;
+  const variation = evolution(total, totalPrecedent);
+
+  const segments = parCategorie.map((ligne) => {
+    const categorie = categories.find((c) => c.id === ligne.categoryId);
+    return {
+      id: ligne.categoryId,
+      nom: categorie?.name ?? "Sans catégorie",
+      code: categorie?.codeSyscohada ?? null,
+      couleur: categorie?.color ?? "var(--cat-8)",
+      montant: ligne._sum.amount ?? 0,
+    };
+  });
 
   const points = mois6.map((m, index) => ({
     label: capitaliser(m.label),
@@ -149,36 +196,14 @@ export default async function DashboardPage() {
     }))
     .sort((a, b) => b.montant - a.montant);
 
-  // Les noms des employés vivent chez Clerk (Membership ne porte qu'un
-  // identifiant). Toutes les barres partagent l'encre indigo : ici la couleur
-  // ne distingue pas les personnes, elle classe des montants.
-  let employes: {
-    id: string;
-    label: string;
-    couleur: string;
-    montant: number;
-  }[] = [];
-  if (vueComplete && parEmploye.length > 0) {
-    const client = await clerkClient();
-    const { data: utilisateurs } = await client.users.getUserList({
-      userId: parEmploye.map((ligne) => ligne.createdById),
-      limit: 100,
-    });
-    const noms = new Map(
-      utilisateurs.map((u) => [
-        u.id,
-        [u.firstName, u.lastName].filter(Boolean).join(" ") ||
-          u.username ||
-          "—",
-      ]),
-    );
-    employes = parEmploye.map((ligne) => ({
-      id: ligne.createdById,
-      label: noms.get(ligne.createdById) ?? "—",
-      couleur: "var(--indigo)",
-      montant: ligne._sum.amount ?? 0,
-    }));
-  }
+  // Toutes les barres partagent l'encre indigo : ici la couleur ne distingue
+  // pas les personnes, elle classe des montants.
+  const employes = parEmploye.map((ligne) => ({
+    id: ligne.createdById,
+    label: membres.get(ligne.createdById) ?? "—",
+    couleur: "var(--indigo)",
+    montant: ligne._sum.amount ?? 0,
+  }));
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-6 md:px-8 md:py-10">

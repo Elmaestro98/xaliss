@@ -319,6 +319,43 @@ production, quand les connexions directes s'épuisent et que l'application tombe
   supprimé qu'**après** le commit — l'inverse laisserait une dépense pointant
   vers un fichier disparu si la transaction échouait.
 
+### Décisions d'architecture — temps de réponse (29 août 2026)
+
+- **Ce qui coûte cher n'est pas la requête, c'est la vague.** Depuis le RLS,
+  chaque requête portée est une transaction : quatre allers-retours vers la base
+  (`BEGIN`, `set_config`, la requête, `COMMIT` — voir `lib/prisma.ts`). Mesuré
+  depuis le Sénégal contre Supabase Francfort : **169 ms l'aller-retour, 670 ms
+  la requête portée**. Des requêtes lancées ensemble paient ce prix une seule
+  fois ; une seconde vague qui attend la première le paie deux fois. Le
+  dashboard en comptait **quatre** (agrégats → catégories → graphiques → Clerk),
+  soit près de trois secondes de réseau avant le premier pixel. Il n'en compte
+  plus qu'**une**.
+- **Une requête volontairement trop large bat un aller-retour de plus.** C'est
+  le corollaire, et il va contre le réflexe habituel : le dashboard demande
+  désormais *toutes* les catégories de l'entreprise et *tous* ses membres plutôt
+  que ceux que le `groupBy` a désignés. Quelques dizaines de lignes inutiles
+  coûtent moins que 670 ms d'attente. **Ne vaut que pour des ensembles bornés
+  par l'entreprise** (catégories, membres) — jamais pour les dépenses.
+- **Les appels à Clerk sont des requêtes réseau comme les autres** et doivent
+  partir dans la même vague. D'où la préférence pour
+  `getOrganizationMembershipList(organizationId)`, qui ne dépend de rien, sur
+  `getUserList({ userId })`, qui attend un résultat de la base. Contrepartie
+  assumée sur le dashboard : un employé parti après avoir saisi une dépense ce
+  mois-ci s'affiche « — ». **`/notes-de-frais` garde délibérément l'ancien
+  appel** : sa liste couvre tout l'historique, où d'anciens employés sont
+  attendus, et y perdre les noms serait payer 400 ms d'une régression.
+- **`loading.tsx` est la moitié du problème, et c'est la moitié gratuite.**
+  Sans lui, cliquer sur une entrée de la barre latérale ne produit rien à
+  l'écran tant que la page n'est pas prête : l'ancienne reste figée, et le
+  produit paraît cassé plutôt que lent. Il vit au niveau du groupe `(app)` et
+  reprend le motif du projet — la réglure sans encre, le cahier pas encore
+  écrit. Une PME sur un forfait data mesure la vitesse à ce qu'elle voit bouger.
+- **Le développement restera lent, et ce n'est pas un défaut à corriger.** Les
+  169 ms sont la distance entre Saint-Louis et Francfort. En production,
+  application et base partageront `eu-central-1` et le même aller-retour
+  tombera à quelques millisecondes. À ne pas confondre avec ce qui précède :
+  les vagues, elles, coûtaient cher **des deux côtés**.
+
 ### Direction visuelle — « le cahier, la nuit » (refondue phase 8)
 
 **Le cahier.** Xaalis remplace le registre papier des PME : l'interface en emprunte la

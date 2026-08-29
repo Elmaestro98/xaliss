@@ -90,6 +90,24 @@ function lireFiltres(params: ParametresBruts) {
   };
 }
 
+/** Les membres de l'entreprise, pour le filtre « employé » du journal. */
+async function listerEmployes(organizationId: string) {
+  const client = await clerkClient();
+  const adhesions = await client.organizations.getOrganizationMembershipList({
+    organizationId,
+    limit: 100,
+  });
+
+  return adhesions.data.flatMap((adhesion) => {
+    const profil = adhesion.publicUserData;
+    if (!profil?.userId) return [];
+    const nom =
+      [profil.firstName, profil.lastName].filter(Boolean).join(" ") ||
+      profil.identifier;
+    return [{ id: profil.userId, nom }];
+  });
+}
+
 export default async function DepensesPage({
   searchParams,
 }: {
@@ -156,53 +174,45 @@ export default async function DepensesPage({
     ],
   };
 
-  const [nombreTotal, sommeFiltree, depenses, categories] = await Promise.all([
-    prisma.expense.count({ where }),
-    prisma.expense.aggregate({ where, _sum: { amount: true } }),
-    prisma.expense.findMany({
-      where,
-      orderBy: [{ date: "desc" }, { createdAt: "desc" }],
-      skip: (filtres.page - 1) * PAR_PAGE,
-      take: PAR_PAGE,
-      select: {
-        id: true,
-        amount: true,
-        date: true,
-        supplier: true,
-        paymentMethod: true,
-        // Une dépense issue d'une note de frais ne se corrige pas depuis le
-        // journal : la ligne reste alors du texte, sans lien.
-        reportId: true,
-        category: { select: { name: true, codeSyscohada: true, color: true } },
-        // Un seul suffit : le trombone dit « il y a une pièce », pas combien.
-        receipts: { select: { id: true }, take: 1 },
-      },
-    }),
-    prisma.category.findMany({
-      where: { organizationId: session.organizationId },
-      orderBy: { codeSyscohada: "asc" },
-      select: { id: true, name: true },
-    }),
-  ]);
-
-  // Les noms des collègues vivent chez Clerk, pas en base : Membership ne
-  // porte que l'identifiant (PROJET.md §7).
-  let employes: { id: string; nom: string }[] = [];
-  if (vueComplete) {
-    const client = await clerkClient();
-    const adhesions = await client.organizations.getOrganizationMembershipList({
-      organizationId: session.organizationId,
-      limit: 100,
-    });
-    employes = adhesions.data.flatMap((adhesion) => {
-      const profil = adhesion.publicUserData;
-      if (!profil?.userId) return [];
-      const nom =
-        [profil.firstName, profil.lastName].filter(Boolean).join(" ") ||
-        profil.identifier;
-      return [{ id: profil.userId, nom }];
-    });
-  }
+  // Clerk part avec les requêtes à la base, et non après elles : cet appel ne
+  // dépend que de l'entreprise. Attendre son tour ajoutait un aller-retour
+  // complet à l'affichage du journal (même raison qu'au dashboard).
+  const [nombreTotal, sommeFiltree, depenses, categories, employes] =
+    await Promise.all([
+      prisma.expense.count({ where }),
+      prisma.expense.aggregate({ where, _sum: { amount: true } }),
+      prisma.expense.findMany({
+        where,
+        orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+        skip: (filtres.page - 1) * PAR_PAGE,
+        take: PAR_PAGE,
+        select: {
+          id: true,
+          amount: true,
+          date: true,
+          supplier: true,
+          paymentMethod: true,
+          // Une dépense issue d'une note de frais ne se corrige pas depuis le
+          // journal : la ligne reste alors du texte, sans lien.
+          reportId: true,
+          category: {
+            select: { name: true, codeSyscohada: true, color: true },
+          },
+          // Un seul suffit : le trombone dit « il y a une pièce », pas combien.
+          receipts: { select: { id: true }, take: 1 },
+        },
+      }),
+      prisma.category.findMany({
+        where: { organizationId: session.organizationId },
+        orderBy: { codeSyscohada: "asc" },
+        select: { id: true, name: true },
+      }),
+      // Les noms des collègues vivent chez Clerk, pas en base : Membership ne
+      // porte que l'identifiant (PROJET.md §7).
+      vueComplete
+        ? listerEmployes(session.organizationId)
+        : Promise.resolve([]),
+    ]);
 
   const totalPages = Math.max(1, Math.ceil(nombreTotal / PAR_PAGE));
 

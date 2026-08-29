@@ -149,8 +149,16 @@ App mobile native, gestion des revenus/trésorerie, multi-devises, multi-succurs
 
 ```env
 # Supabase : POOLER obligatoire en serverless
-DATABASE_URL="...pooler.supabase.com:6543/postgres?pgbouncer=true"
+# Rôle xaalis_app (LOGIN, sans BYPASSRLS) — c'est lui qui subit les policies RLS.
+# Nom d'utilisateur qualifié par le projet (xaalis_app.<ref>) : le pooler
+# Supavisor en a besoin pour savoir à quel projet appartient la connexion.
+DATABASE_URL="postgresql://xaalis_app.<ref>:...@...pooler.supabase.com:6543/postgres?pgbouncer=true"
 DIRECT_URL="...supabase.com:5432/postgres"
+
+# Rôle postgres (propriétaire, BYPASSRLS) — pour prismaHorsPortee : crons,
+# purge, console éditeur. Absente : prismaHorsPortee retombe sur DATABASE_URL,
+# donc sur le rôle limité, et les tâches transverses échoueraient.
+DATABASE_URL_ADMIN="postgresql://postgres.<ref>:...@...pooler.supabase.com:6543/postgres?pgbouncer=true"
 
 # Paiements Wave — lien de paiement du portefeuille marchand, à montant libre.
 # Absente : la souscription échoue franchement (il n'y a plus de simulation).
@@ -493,16 +501,18 @@ Paiement par **lien Wave à montant libre**, encaissement validé à la main :
   dont le nom est fait pour être cherché : `grep prismaHorsPortee src/` donne la
   liste exhaustive des endroits qui regardent par-dessus la cloison.
   Vérifiée par `scripts/test-garde-portee.ts` (14 cas).
-- ⚠️ **RLS PostgreSQL : écrit, pas activé** (`prisma/migrations-rls/`). Trois
-  obstacles, documentés là-bas : l'application se connecte en `postgres`, le
-  rôle **propriétaire** des tables, qui ignore ses propres policies ; la règle
-  prévue à l'origine (`auth.jwt()->>'org_id'`) est un outil Supabase inopérant
-  sur une connexion Prisma directe, sans jeton ; et poser le contexte
-  d'entreprise coûte une transaction par requête. La garde applicative couvre
-  le risque réel — l'oubli d'un développeur — mais **pas** une injection SQL,
-  ni une écriture par identifiant non vérifiée, ni une requête lancée hors de
-  l'application. Ne pas promettre du RLS à un client tant que ce dossier n'est
-  pas appliqué.
+- ✅ **RLS PostgreSQL : actif en développement** (29 août 2026,
+  `prisma/migrations-rls/`). L'application se connecte désormais sous le rôle
+  `xaalis_app`, qui ne possède pas les tables et ne peut pas contourner ses
+  propres policies (contrairement à `postgres`, gardé pour les tâches
+  transverses via `DATABASE_URL_ADMIN` — voir §6). Chaque requête portée pose
+  `app.organization_id` dans une transaction (`src/lib/prisma.ts` :
+  `prismaPourOrg()`, `transactionPortee()`) ; PostgreSQL refuse tout le reste.
+  Vérifié par `scripts/test-garde-portee.ts` (15 cas) et `scripts/test-rls.ts`
+  (isolation réelle entre deux entreprises, table par table).
+  **Reste avant promesse client : appliquer les mêmes étapes sur la base de
+  production** (`prisma/migrations-rls/README.md`) — ce qui précède n'a encore
+  couvert que le développement.
 - Buckets Storage privés, URLs signées à durée limitée
 - `AuditLog` immuable sur toutes les actions sensibles
 - Sauvegardes quotidiennes, rétention 30 jours
@@ -542,10 +552,14 @@ Vérifiée seulement chez nous, elle ne serait qu'un affichage.
 
 ## 12. Plan de développement (13 semaines)
 
-> **Point d'arrêt** — dernier travail (15 août 2026) : **isolation des
-> entreprises** et **console éditeur**.
-> Garde applicative dans `lib/prisma.ts` (§10), RLS écrit mais non appliqué
-> (`prisma/migrations-rls/`), console `/editeur` en **lecture seule**.
+> **Point d'arrêt** — dernier travail (29 août 2026) : **activation du RLS en
+> développement**. Rôle `xaalis_app` créé, `DATABASE_URL` / `DATABASE_URL_ADMIN`
+> séparées, policies appliquées, isolation vérifiée par les deux scripts de
+> test (§10). Reste : la même opération sur la base de **production**, quand
+> le déploiement (phase 1, tableau ci-dessous) sera engagé.
+>
+> Avant cela (15 août 2026) : **isolation des entreprises** (garde applicative)
+> et **console éditeur**, en lecture seule.
 > Au passage, deux défauts corrigés : `DATABASE_URL` et `DIRECT_URL` étaient
 > **inversés** (l'application n'utilisait pas le pooler — panne garantie en
 > production dès la montée en charge), et `/editeur` se préconstruisait en
@@ -572,7 +586,7 @@ Vérifiée seulement chez nous, elle ne serait qu'un affichage.
 
 | Phase | Contenu                                                        | Durée   | Statut                                                                                                                                                                                                       |
 | ----- | -------------------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1     | Setup : Next.js, Prisma, Supabase, Clerk Orgs, RLS, Vercel     | 1 sem   | 🟡 Next.js 16 + Prisma 7 + Supabase + Clerk Orgs faits. Isolation assurée par la **garde applicative** (§10), RLS **écrit mais non appliqué** (`prisma/migrations-rls/`) — **reste : activer le RLS (nouveau rôle de base), déploiement Vercel** (`vercel.json` et ses 2 crons sont prêts) |
+| 1     | Setup : Next.js, Prisma, Supabase, Clerk Orgs, RLS, Vercel     | 1 sem   | 🟡 Next.js 16 + Prisma 7 + Supabase + Clerk Orgs faits. Isolation à deux niveaux : **garde applicative** (§10) + **RLS PostgreSQL actif** (`prisma/migrations-rls/`, 29 août 2026) — **en développement seulement. Reste : reproduire l'activation RLS sur la base de production, déploiement Vercel** (`vercel.json` et ses 2 crons sont prêts) |
 | 2     | Auth, onboarding entreprise, utilisateurs & rôles              | 1,5 sem | ✅ Connexion, onboarding entreprise, synchro Clerk→base, catégories SYSCOHADA, matrice de permissions, écran d'équipe (changer de rôle, retirer un membre). Les invitations restent déléguées à l'UI Clerk.  |
 | 3     | Module Dépenses : CRUD, catégories, justificatifs, récurrences | 2 sem   | ✅ Système visuel + shadcn/ui, coque de l'app, saisie, journal, justificatifs (Storage + URLs signées), récurrences (+ cron), filtres & pagination, modification et suppression d'une dépense (audit complet) |
 | 4     | OCR + Budgets & alertes email                                  | 2 sem   | ✅ OCR Gemini (`/api/ocr`), budgets par catégorie ou globaux, jauges, seuils configurables, alertes email Resend                                                                                              |

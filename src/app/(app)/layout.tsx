@@ -1,4 +1,5 @@
 import { OrganizationSwitcher, UserButton } from "@clerk/nextjs";
+import Image from "next/image";
 import { BasculeTheme } from "@/components/bascule-theme";
 import { type LienNav, NavLaterale, NavMobile } from "@/components/navigation";
 import { ROLES } from "@/lib/paiement";
@@ -54,9 +55,21 @@ export default async function AppLayout({
       {/* Écrans larges : la couverture sombre du cahier */}
       <aside className="hidden w-60 shrink-0 flex-col gap-6 border-r border-sidebar-border bg-sidebar py-5 md:flex">
         <div className="flex flex-col items-start gap-3 px-5">
-          <span className="titre text-xl text-sidebar-accent-foreground">
-            Xaalis
-          </span>
+          {/* La couverture est toujours sombre (les deux thèmes partagent
+              --sidebar en teinte foncée) : une seule variante du logo, jamais
+              la claire. */}
+          <div className="flex items-center gap-2">
+            <Image
+              src="/marque/mark-sombre-96.png"
+              alt=""
+              width={28}
+              height={28}
+              className="rounded-md"
+            />
+            <span className="titre text-xl text-sidebar-accent-foreground">
+              Xaalis
+            </span>
+          </div>
           {/*
             Styles en ligne plutôt que classes : la barre est sombre et les
             styles internes de Clerk (texte foncé) l'emportent sur une classe
@@ -95,7 +108,26 @@ export default async function AppLayout({
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Mobile : l'entreprise en haut, la navigation sous le pouce */}
         <header className="sticky top-0 z-30 flex items-center justify-between border-b border-reglure bg-background/95 px-4 py-3 backdrop-blur-sm md:hidden">
-          <span className="titre text-lg">Xaalis</span>
+          <div className="flex items-center gap-2">
+            {/* L'en-tête mobile suit --background, donc le thème actif :
+                la marque doit suivre avec lui, contrairement à la barre
+                latérale qui reste toujours sombre. */}
+            <Image
+              src="/marque/mark-sombre-96.png"
+              alt=""
+              width={24}
+              height={24}
+              className="hidden rounded-md dark:block"
+            />
+            <Image
+              src="/marque/mark-claire-96.png"
+              alt=""
+              width={24}
+              height={24}
+              className="rounded-md dark:hidden"
+            />
+            <span className="titre text-lg">Xaalis</span>
+          </div>
           <div className="flex items-center gap-1">
             <OrganizationSwitcher
               hidePersonal

@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Show, UserButton } from "@clerk/nextjs";
 import {
@@ -64,9 +65,23 @@ function EnTete() {
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-3 md:px-8">
         <Link
           href="/"
-          className="titre rounded-lg text-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
+          className="flex items-center gap-2 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
         >
-          Xaalis
+          <Image
+            src="/marque/mark-sombre-96.png"
+            alt=""
+            width={28}
+            height={28}
+            className="hidden rounded-md dark:block"
+          />
+          <Image
+            src="/marque/mark-claire-96.png"
+            alt=""
+            width={28}
+            height={28}
+            className="rounded-md dark:hidden"
+          />
+          <span className="titre text-xl">Xaalis</span>
         </Link>
 
         <nav className="hidden items-center gap-8 text-sm text-muted-foreground md:flex">

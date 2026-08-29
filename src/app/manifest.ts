@@ -14,11 +14,23 @@ export default function manifest(): MetadataRoute.Manifest {
     // l'ancienne palette claire.
     background_color: "#0b0d12",
     theme_color: "#0b0d12",
+    // Le vrai logo (public/logosombre.jpg d'origine, recadré en carré) —
+    // remplace l'ancien monogramme généré par code.
     icons: [
-      { src: "/icon-192", sizes: "192x192", type: "image/png", purpose: "any" },
-      { src: "/icon-512", sizes: "512x512", type: "image/png", purpose: "any" },
       {
-        src: "/icon-maskable-512",
+        src: "/marque/icon-192.png",
+        sizes: "192x192",
+        type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: "/marque/icon-512.png",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: "/marque/icon-maskable-512.png",
         sizes: "512x512",
         type: "image/png",
         purpose: "maskable",

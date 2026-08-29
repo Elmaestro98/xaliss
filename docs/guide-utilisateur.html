@@ -371,6 +371,43 @@ a { color: var(--indigo); }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
+
+/* ---------------- Impression / export PDF ----------------
+   Le clair reste le thème d'impression même si l'appareil qui imprime est
+   réglé en sombre : du papier gaspillerait son encre à reproduire un fond
+   presque noir. La barre de filtre n'a pas de sens sur une page figée — le
+   PDF contient déjà tout, dans l'ordre du sommaire. */
+@media print {
+  :root {
+    --papier: #eef1f7 !important;
+    --feuille: #ffffff !important;
+    --pose: #e4eaf4 !important;
+    --reglure: #ccd8ea !important;
+    --encre: #131720 !important;
+    --encre-pale: #5a6782 !important;
+    --indigo: #2b3a8f !important;
+    --indigo-pose: #dfe6f2 !important;
+    --vert: #17835a !important;
+    --ocre: #b45309 !important;
+    --brique: #b42318 !important;
+    color-scheme: light;
+  }
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  @page { size: A4; margin: 16mm 14mm 18mm; }
+  .filtre { display: none !important; }
+  section.feuillet[data-roles] { display: block !important; }
+  .page { max-width: none; padding: 0; }
+  header.couverture { padding-top: 0; break-after: page; }
+  section.feuillet { break-inside: avoid-page; }
+  .feuille, .cadre-tableau, ol.etapes > li, .grille .feuille {
+    break-inside: avoid;
+  }
+  nav.sommaire a { color: var(--encre); text-decoration: none; }
+  a[href^="#"]::after { content: ""; }
+}
 </style>
 
 <div class="page">

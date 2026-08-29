@@ -9,13 +9,19 @@ export default function manifest(): MetadataRoute.Manifest {
     lang: "fr",
     start_url: "/dashboard",
     display: "standalone",
-    background_color: "#eef1f7",
-    theme_color: "#131720",
+    // Fond de l'écran de démarrage et couleur système : accordés au thème
+    // sombre par défaut (§6 PROJET.md — « le cahier, la nuit »), pas à
+    // l'ancienne palette claire.
+    background_color: "#0b0d12",
+    theme_color: "#0b0d12",
     icons: [
+      { src: "/icon-192", sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: "/icon-512", sizes: "512x512", type: "image/png", purpose: "any" },
       {
-        src: "/favicon.ico",
-        sizes: "any",
-        type: "image/x-icon",
+        src: "/icon-maskable-512",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "maskable",
       },
     ],
   };

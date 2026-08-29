@@ -46,6 +46,14 @@ export const metadata: Metadata = {
   description:
     "Suivez les dépenses, budgets et notes de frais de votre entreprise, en FCFA.",
   manifest: "/manifest.webmanifest",
+  // iOS ignore une partie du manifest.webmanifest : sans ces balises,
+  // l'app ajoutée à l'écran d'accueil garde la barre d'adresse Safari au
+  // lieu de s'ouvrir en plein écran comme sur Android.
+  appleWebApp: {
+    capable: true,
+    title: "Xaalis",
+    statusBarStyle: "black-translucent",
+  },
 };
 
 export const viewport: Viewport = {

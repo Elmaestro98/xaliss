@@ -22,5 +22,6 @@ export const DEFAULT_CATEGORIES = [
   { name: "Honoraires et conseils", codeSyscohada: "632", color: "#0891b2" },
   { name: "Impôts et taxes", codeSyscohada: "64", color: "#dc2626" },
   { name: "Charges de personnel", codeSyscohada: "661", color: "#16a34a" },
+  { name: "Repas du personnel", codeSyscohada: "6638", color: "#f43f5e" },
   { name: "Autres charges", codeSyscohada: "658", color: "#94a3b8" },
 ] as const;

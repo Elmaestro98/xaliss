@@ -602,8 +602,11 @@ export async function rembourserNote(reportId: string): Promise<void> {
   if (!note) return;
 
   await transactionPortee(session.organizationId, async (tx) => {
+    // updateMany borné au tenant : la garde de portée (lib/prisma.ts) refuse
+    // un where sans organizationId, et un reportId étranger ne validerait
+    // aucune dépense.
     await tx.expense.updateMany({
-      where: { reportId },
+      where: { reportId, organizationId: session.organizationId },
       data: { status: "VALIDEE" },
     });
     await tx.expenseReport.update({
